@@ -14,8 +14,8 @@ import oauth.signpost.basic.DefaultOAuthConsumer;
 import oauth.signpost.commonshttp.CommonsHttpOAuthProvider;
 import oauth.signpost.exception.OAuthException;
 import oauth.signpost.http.HttpRequest;
-import play.libs.WS.SignatureCalculator;
-import play.libs.WS.WSRequest;
+import play.libs.ws.WS.SignatureCalculator;
+import play.libs.ws.WS.WSRequest;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Maps;
@@ -150,7 +150,7 @@ public class OAuth {
             if (request instanceof WSRequest) {
                 return new WSRequestAdapter((WSRequest)request);
             } else {
-                throw new IllegalArgumentException("OAuthCalculator expects requests of type play.libs.WS.WSRequest");
+                throw new IllegalArgumentException("OAuthCalculator expects requests of type play.libs.ws.WS.WSRequest");
             }
         }
 

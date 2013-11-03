@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.Test;
 import play.libs.Json;
-import play.libs.WS;
+import play.libs.ws.WS;
 
 import java.util.concurrent.atomic.AtomicReference;
 

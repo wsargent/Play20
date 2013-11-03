@@ -21,9 +21,7 @@ import play.data.validation.Constraints.RequiredValidator;
 import play.i18n.Lang;
 import play.libs.F;
 import play.libs.F.*;
-import play.libs.WS;
-
-import play.api.mvc.AsyncResult;
+import play.libs.ws.WS;
 
 import models.JCustomer;
 import play.data.Form;

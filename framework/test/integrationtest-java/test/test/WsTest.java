@@ -14,7 +14,7 @@ import static controllers.TestController.Echo;
 import static controllers.TestController.ToReturn;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
-import static play.libs.WS.*;
+import static play.libs.ws.WS.*;
 import static play.libs.F.*;
 
 public class WsTest extends WithServer {
