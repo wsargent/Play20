@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2009-2013 Typesafe Inc. <http://www.typesafe.com>
  */
-package play.libs;
+package play.libs.oauth;
 
 import java.io.InputStream;
 import java.util.List;
@@ -14,8 +14,7 @@ import oauth.signpost.basic.DefaultOAuthConsumer;
 import oauth.signpost.commonshttp.CommonsHttpOAuthProvider;
 import oauth.signpost.exception.OAuthException;
 import oauth.signpost.http.HttpRequest;
-import play.libs.ws.WS.SignatureCalculator;
-import play.libs.ws.WS.WSRequest;
+import play.libs.ws.*;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Maps;
@@ -62,7 +61,7 @@ public class OAuth {
     /**
      * Exchange a request token for an access token.
      *
-     * @param the token/secret pair obtained from a previous call
+     * @param token the token/secret pair obtained from a previous call
      * @param verifier a string you got through your user, with redirection
      * @return A Right(RequestToken) in case of success, Left(OAuthException) otherwise
      */
@@ -138,7 +137,7 @@ public class OAuth {
      * WS.url("http://example.com/protected").sign(OAuthCalculator(service, tokens)).get()
      * }}}
      */
-    public static class OAuthCalculator extends AbstractOAuthConsumer implements SignatureCalculator {
+    public static class OAuthCalculator extends AbstractOAuthConsumer implements WSSignatureCalculator {
 
         public OAuthCalculator(ConsumerKey consumerKey, RequestToken token) {
             super(consumerKey.key, consumerKey.secret);

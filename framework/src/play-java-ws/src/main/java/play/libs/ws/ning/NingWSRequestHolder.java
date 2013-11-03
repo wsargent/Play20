@@ -1,15 +1,14 @@
 package play.libs.ws.ning;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.ning.http.client.*;
+import com.ning.http.client.FluentCaseInsensitiveStringsMap;
+import com.ning.http.client.FluentStringsMap;
+import com.ning.http.client.PerRequestConfig;
 import com.ning.http.util.AsyncHttpProviderUtils;
 import org.jboss.netty.handler.codec.http.HttpHeaders;
-
-import play.libs.ws.*;
-
 import play.libs.F;
 import play.libs.Json;
-import play.libs.ws.SignatureCalculator;
+import play.libs.ws.*;
 
 import java.io.File;
 import java.io.InputStream;
@@ -22,19 +21,21 @@ import java.util.*;
  */
 public class NingWSRequestHolder implements WSRequestHolder {
 
+    private final NingWSClient client;
     private final String url;
     private Map<String, Collection<String>> headers = new HashMap<String, Collection<String>>();
     private Map<String, Collection<String>> queryParameters = new HashMap<String, Collection<String>>();
 
     private String username = null;
     private String password = null;
-    private Realm.AuthScheme scheme = null;
-    private SignatureCalculator calculator = null;
+    private WSAuthScheme scheme = null;
+    private WSSignatureCalculator calculator = null;
 
     private int timeout = 0;
     private Boolean followRedirects = null;
 
-    public NingWSRequestHolder(String url) {
+    public NingWSRequestHolder(NingWSClient client, String url) {
+        this.client = client;
         try {
             URL reference = new URL(url);
 
@@ -117,7 +118,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      * @param userInfo
      */
     public WSRequestHolder setAuth(String userInfo) {
-        this.scheme = Realm.AuthScheme.BASIC;
+        this.scheme = WSAuthScheme.BASIC;
 
         if (userInfo.equals("")) {
             throw new RuntimeException(new MalformedURLException("userInfo should not be empty"));
@@ -148,7 +149,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     public WSRequestHolder setAuth(String username, String password) {
         this.username = username;
         this.password = password;
-        this.scheme = Realm.AuthScheme.BASIC;
+        this.scheme = WSAuthScheme.BASIC;
         return this;
     }
 
@@ -159,14 +160,14 @@ public class NingWSRequestHolder implements WSRequestHolder {
      * @param password
      * @param scheme   authentication scheme
      */
-    public WSRequestHolder setAuth(String username, String password, Realm.AuthScheme scheme) {
+    public WSRequestHolder setAuth(String username, String password, WSAuthScheme scheme) {
         this.username = username;
         this.password = password;
         this.scheme = scheme;
         return this;
     }
 
-    public WSRequestHolder sign(SignatureCalculator calculator) {
+    public WSRequestHolder sign(WSSignatureCalculator calculator) {
         this.calculator = calculator;
         return this;
     }
@@ -242,7 +243,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      * @return the auth scheme, null if not an authenticated request
      */
     @Override
-    public Realm.AuthScheme getScheme() {
+    public WSAuthScheme getScheme() {
         return this.scheme;
     }
 
@@ -250,7 +251,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      * @return the signature calculator (exemple: OAuth), null if none is set.
      */
     @Override
-    public SignatureCalculator getCalculator() {
+    public WSSignatureCalculator getCalculator() {
         return this.calculator;
     }
 
@@ -419,7 +420,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      */
     @Override
     public F.Promise<play.libs.ws.WSResponse> execute(String method) {
-        NingWSRequest req = new NingWSRequest(method).setUrl(url)
+        NingWSRequest req = new NingWSRequest(client, method).setUrl(url)
                 .setHeaders(headers)
                 .setQueryParameters(new FluentStringsMap(queryParameters));
         return execute(req);
@@ -439,7 +440,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
             headers.replace(HttpHeaders.Names.CONTENT_TYPE, contentType + "; charset=utf-8");
         }
 
-        NingWSRequest req = new NingWSRequest(method).setBody(body)
+        NingWSRequest req = new NingWSRequest(client, method).setBody(body)
                 .setUrl(url)
                 .setHeaders(headers)
                 .setQueryParameters(new FluentStringsMap(queryParameters))
@@ -448,7 +449,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     }
 
     private F.Promise<play.libs.ws.WSResponse> executeJson(String method, JsonNode body) {
-        NingWSRequest req = new NingWSRequest(method).setBody(Json.stringify(body))
+        NingWSRequest req = new NingWSRequest(client, method).setBody(Json.stringify(body))
                 .setUrl(url)
                 .setHeaders(headers)
                 .setHeader(HttpHeaders.Names.CONTENT_TYPE, "application/json; charset=utf-8")
@@ -459,7 +460,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     }
 
     private F.Promise<play.libs.ws.WSResponse> executeIS(String method, InputStream body) {
-        NingWSRequest req = new NingWSRequest(method).setBody(body)
+        NingWSRequest req = new NingWSRequest(client, method).setBody(body)
                 .setUrl(url)
                 .setHeaders(headers)
                 .setQueryParameters(new FluentStringsMap(queryParameters));
@@ -467,7 +468,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     }
 
     private F.Promise<play.libs.ws.WSResponse> executeFile(String method, File body) {
-        NingWSRequest req = new NingWSRequest(method).setBody(body)
+        NingWSRequest req = new NingWSRequest(client, method).setBody(body)
                 .setUrl(url)
                 .setHeaders(headers)
                 .setQueryParameters(new FluentStringsMap(queryParameters));

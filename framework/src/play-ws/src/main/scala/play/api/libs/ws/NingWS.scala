@@ -30,7 +30,7 @@ class NingWSClient(config: AsyncHttpClientConfig) extends AsyncHttpClient with W
 /**
  * A WS Request.
  */
-class NingWSRequest(app: Application, _method: String, _auth: Option[Tuple3[String, String, WSAuthScheme]], _calc: Option[SignatureCalculator])
+class NingWSRequest(app: Application, _method: String, _auth: Option[(String, String, WSAuthScheme)], _calc: Option[WSSignatureCalculator])
   extends RequestBuilderBase[NingWSRequest](classOf[NingWSRequest], _method, false)
   with WSRequest {
 
@@ -45,7 +45,7 @@ class NingWSRequest(app: Application, _method: String, _auth: Option[Tuple3[Stri
     super.setBody(s)
   }
 
-  protected var calculator: Option[SignatureCalculator] = _calc
+  protected var calculator: Option[WSSignatureCalculator] = _calc
 
   protected var headers: Map[String, Seq[String]] = Map()
 
@@ -55,12 +55,12 @@ class NingWSRequest(app: Application, _method: String, _auth: Option[Tuple3[Stri
   _auth.map(data => auth(data._1, data._2, authScheme(data._3))).getOrElse({})
 
   private def authScheme(scheme: WSAuthScheme): AuthScheme = scheme match {
-    case DIGEST => AuthScheme.DIGEST
-    case BASIC => AuthScheme.BASIC
-    case NTLM => AuthScheme.NTLM
-    case SPNEGO => AuthScheme.SPNEGO
-    case KERBEROS => AuthScheme.KERBEROS
-    case NONE => AuthScheme.NONE
+    case WSAuthScheme.DIGEST => AuthScheme.DIGEST
+    case WSAuthScheme.BASIC => AuthScheme.BASIC
+    case WSAuthScheme.NTLM => AuthScheme.NTLM
+    case WSAuthScheme.SPNEGO => AuthScheme.SPNEGO
+    case WSAuthScheme.KERBEROS => AuthScheme.KERBEROS
+    case WSAuthScheme.NONE => AuthScheme.NONE
     case _ => throw new RuntimeException("Unknown scheme " + scheme)
   }
 
@@ -194,7 +194,7 @@ class NingWSRequest(app: Application, _method: String, _auth: Option[Tuple3[Stri
     super.setUrl(url)
   }
 
-  private[libs] def executeStream[A](consumer: ResponseHeaders => Iteratee[Array[Byte], A])(implicit app: Application): Future[Iteratee[Array[Byte], A]] = {
+  private[libs] def executeStream[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit app: Application): Future[Iteratee[Array[Byte], A]] = {
     import com.ning.http.client.AsyncHandler
     var doneOrError = false
     calculator.map(_.sign(this))
@@ -215,7 +215,7 @@ class NingWSRequest(app: Application, _method: String, _auth: Option[Tuple3[Stri
 
       override def onHeadersReceived(h: HttpResponseHeaders) = {
         val headers = h.getHeaders()
-        iteratee = consumer(ResponseHeaders(statusCode, ningHeadersToMap(headers)))
+        iteratee = consumer(DefaultWSResponseHeaders(statusCode, ningHeadersToMap(headers)))
         STATE.CONTINUE
       }
 
@@ -262,6 +262,7 @@ class NingWSRequest(app: Application, _method: String, _auth: Option[Tuple3[Stri
 
 }
 
+
 /**
  * A WS Request builder.
  */
@@ -269,19 +270,19 @@ case class NingWSRequestHolder(app:Application,
                                url: String,
                                headers: Map[String, Seq[String]],
                                queryString: Map[String, Seq[String]],
-                               calc: Option[SignatureCalculator],
+                               calc: Option[WSSignatureCalculator],
                                auth: Option[(String, String, WSAuthScheme)],
                                followRedirects: Option[Boolean],
                                requestTimeout: Option[Int],
                                virtualHost: Option[String],
-                               proxyServer: Option[ProxyServer]) extends WSRequestHolder {
+                               proxyServer: Option[WSProxyServer]) extends WSRequestHolder {
 
 
   /**
    * sets the signature calculator for the request
    * @param calc
    */
-  def sign(calc: SignatureCalculator): WSRequestHolder = this.copy(calc = Some(calc))
+  def sign(calc: WSSignatureCalculator): WSRequestHolder = this.copy(calc = Some(calc))
 
   /**
    * sets the authentication realm
@@ -330,7 +331,7 @@ case class NingWSRequestHolder(app:Application,
     this.copy(virtualHost = Some(vh))
   }
 
-  def withProxyServer(proxyServer: ProxyServer): WSRequestHolder = {
+  def withProxyServer(proxyServer: WSProxyServer): WSRequestHolder = {
     this.copy(proxyServer = Some(proxyServer))
   }
 
@@ -346,7 +347,7 @@ case class NingWSRequestHolder(app:Application,
    * performs a get with supplied body
    * @param consumer that's handling the response
    */
-  def get[A](consumer: ResponseHeaders => Iteratee[Array[Byte], A]): Future[Iteratee[Array[Byte], A]] =
+  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A]): Future[Iteratee[Array[Byte], A]] =
     prepare("GET").executeStream(consumer)
 
   /**
@@ -364,7 +365,7 @@ case class NingWSRequestHolder(app:Application,
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def patchAndRetrieveStream[A, T](body: T)(consumer: ResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("PATCH", body).executeStream(consumer)
+  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("PATCH", body).executeStream(consumer)
 
   /**
    * Perform a POST on the request asynchronously.
@@ -381,7 +382,7 @@ case class NingWSRequestHolder(app:Application,
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def postAndRetrieveStream[A, T](body: T)(consumer: ResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("POST", body).executeStream(consumer)
+  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("POST", body).executeStream(consumer)
 
   /**
    * Perform a PUT on the request asynchronously.
@@ -398,7 +399,7 @@ case class NingWSRequestHolder(app:Application,
    * performs a PUT with supplied body
    * @param consumer that's handling the response
    */
-  def putAndRetrieveStream[A, T](body: T)(consumer: ResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("PUT", body).executeStream(consumer)
+  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("PUT", body).executeStream(consumer)
 
   /**
    * Perform a DELETE on the request asynchronously.
@@ -613,15 +614,10 @@ class NingWSAPI(app:Application) extends WSAPI {
 
 }
 
-
-class NingAuthScheme(authScheme: AuthScheme) extends WSAuthScheme {
-
-}
-
 /**
  * The Ning implementation of a WS cookie.
  */
-private class NingCookie(ahcCookie: AHCCookie) extends Cookie {
+private class NingWSCookie(ahcCookie: AHCCookie) extends WSCookie {
 
   private def noneIfEmpty(value: String): Option[String] = {
     if (value.isEmpty) None else Some(value)
@@ -698,12 +694,12 @@ case class NingWSResponse(ahcResponse: AHCResponse) extends WSResponse {
   /**
    * The response status code.
    */
-  def status: Int = ahcResponse.getStatusCode()
+  def status: Int = ahcResponse.getStatusCode
 
   /**
    * The response status message.
    */
-  def statusText: String = ahcResponse.getStatusText()
+  def statusText: String = ahcResponse.getStatusText
 
   /**
    * Get a response header.
@@ -713,15 +709,15 @@ case class NingWSResponse(ahcResponse: AHCResponse) extends WSResponse {
   /**
    * Get all the cookies.
    */
-  def cookies: Seq[Cookie] = {
+  def cookies: Seq[WSCookie] = {
     import scala.collection.JavaConverters._
-    ahcResponse.getCookies.asScala.map(new NingCookie(_))
+    ahcResponse.getCookies.asScala.map(new NingWSCookie(_))
   }
 
   /**
    * Get only one cookie, using the cookie name.
    */
-  def cookie(name: String): Option[Cookie] = cookies.find(_.name == Option(name))
+  def cookie(name: String): Option[WSCookie] = cookies.find(_.name == Option(name))
 
   /**
    * The response body as String.
@@ -750,4 +746,4 @@ case class NingWSResponse(ahcResponse: AHCResponse) extends WSResponse {
    */
   lazy val json: JsValue = Json.parse(ahcResponse.getResponseBodyAsBytes)
 
-} play.libs.ws.Response
+}

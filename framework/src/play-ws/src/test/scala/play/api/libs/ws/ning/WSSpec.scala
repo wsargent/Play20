@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2009-2013 Typesafe Inc. <http://www.typesafe.com>
  */
-package play.api.libs.ws
+package play.api.libs.ws.ning
 
 import org.specs2.mutable._
 import org.specs2.mock.Mockito
@@ -11,14 +11,14 @@ import com.ning.http.client.{
   Cookie => AHCCookie
 }
 import java.util
+import play.api.libs.ws._
 
-
-object WSSpec extends Specification with Mockito {
+object NingWSSpec extends Specification with Mockito {
 
   "WS" should {
     "support several query string values for a parameter" in {
       val req = WS.url("http://playframework.com/")
-          .withQueryString("foo"->"foo1", "foo"->"foo2")
+          .withQueryString("foo"->"foo1", "foo"->"foo2").asInstanceOf[NingWSRequestHolder]
           .prepare("GET").build
        req.getQueryParams.get("foo").contains("foo1") must beTrue
        req.getQueryParams.get("foo").contains("foo2") must beTrue
@@ -26,8 +26,8 @@ object WSSpec extends Specification with Mockito {
     }
 
     "support a proxy server" in {
-      val proxy = ProxyServer(protocol = Some("https"), host = "localhost", port = 8080, principal = Some("principal"), password = Some("password"))
-      val req = WS.url("http://playframework.com/").withProxyServer(proxy).prepare("GET").build
+      val proxy = NingWSProxyServer(protocol = Some("https"), host = "localhost", port = 8080, principal = Some("principal"), password = Some("password"))
+      val req = WS.url("http://playframework.com/").withProxyServer(proxy).asInstanceOf[NingWSRequestHolder].prepare("GET").build
       val actual = req.getProxyServer
 
       actual.getProtocolAsString must be equalTo "https"
@@ -39,7 +39,7 @@ object WSSpec extends Specification with Mockito {
 
     "support a proxy server" in {
       val proxy = ProxyServer(host = "localhost", port = 8080)
-      val req = WS.url("http://playframework.com/").withProxyServer(proxy).prepare("GET").build
+      val req = WS.url("http://playframework.com/").withProxyServer(proxy).asInstanceOf[NingWSRequestHolder].prepare("GET").build
       val actual = req.getProxyServer
 
       actual.getProtocolAsString must be equalTo "http"
@@ -72,9 +72,9 @@ object WSSpec extends Specification with Mockito {
       val ahcCookie : AHCCookie = new AHCCookie(domain, name, value, path, maxAge, secure)
       ahcResponse.getCookies returns util.Arrays.asList(ahcCookie)
 
-      val response = Response(ahcResponse)
+      val response = NingWSResponse(ahcResponse)
 
-      val cookies : Seq[Cookie] = response.cookies
+      val cookies : Seq[WSCookie] = response.cookies
       val cookie = cookies(0)
 
       cookie.domain must ===("example.com")
@@ -92,10 +92,10 @@ object WSSpec extends Specification with Mockito {
       val ahcCookie : AHCCookie = new AHCCookie(domain, name, value, path, maxAge, secure)
       ahcResponse.getCookies returns util.Arrays.asList(ahcCookie)
 
-      val response = Response(ahcResponse)
+      val response = WSResponse(ahcResponse)
 
       val optionCookie = response.cookie("someName")
-      optionCookie must beSome[Cookie].which { cookie =>
+      optionCookie must beSome[WSCookie].which { cookie =>
         cookie.domain must ===("example.com")
         cookie.name must beSome("someName")
         cookie.value must beSome("someValue")

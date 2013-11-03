@@ -6,4 +6,13 @@ package play.api.libs
 /**
  * Asynchronous API to to query web services, as an http client.
  */
-package object ws
+package object ws {
+  @deprecated("Use WSResponse", "2.3.0")
+  type Response = WSResponse
+
+  @deprecated("Use DefaultWSProxyServer", "2.3.0")
+  type ProxyServer = DefaultWSProxyServer
+
+  @deprecated("Use DefaultWSResponseHeaders", "2.3.0")
+  type ResponseHeaders = DefaultWSResponseHeaders
+}

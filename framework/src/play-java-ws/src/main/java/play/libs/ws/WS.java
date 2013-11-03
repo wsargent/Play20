@@ -3,6 +3,8 @@
  */
 package play.libs.ws;
 
+import play.api.libs.ws.WSAPI;
+import play.libs.ws.ning.NingWSClient;
 import play.libs.ws.ning.NingWSRequestHolder;
 
 
@@ -14,8 +16,8 @@ import play.libs.ws.ning.NingWSRequestHolder;
 public class WS {
 
     public static WSClient client() {
-
-        return null;
+        // XXX Need to abstract this to the API
+        return new NingWSClient(play.api.libs.ws.WS.client(play.api.Play.unsafeApplication()));
     }
 
     /**
@@ -24,7 +26,8 @@ public class WS {
      * @param url the URL to request
      */
     public static WSRequestHolder url(String url) {
-        return null;
+        // XXX Need to abstract this to the API
+        return new NingWSRequestHolder((NingWSClient) client(), url);
     }
 
 }

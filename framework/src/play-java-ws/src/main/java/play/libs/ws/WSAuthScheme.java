@@ -3,6 +3,11 @@ package play.libs.ws;
 /**
  *
  */
-public interface WSAuthScheme {
-
+public enum WSAuthScheme {
+    DIGEST,
+    BASIC,
+    NTLM,
+    SPNEGO,
+    KERBEROS,
+    NONE
 }

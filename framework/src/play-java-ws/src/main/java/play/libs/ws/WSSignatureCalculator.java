@@ -3,7 +3,7 @@ package play.libs.ws;
 /**
  * Sign a WS call.
  */
-public interface SignatureCalculator {
+public interface WSSignatureCalculator {
 
     /**
      * Sign a request

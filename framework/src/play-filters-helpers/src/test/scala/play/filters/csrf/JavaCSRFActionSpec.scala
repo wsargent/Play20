@@ -3,9 +3,8 @@
  */
 package play.filters.csrf
 
-import play.api.libs.ws.WS.WSRequestHolder
 import scala.concurrent.Future
-import play.api.libs.ws.{WS, Response}
+import play.api.libs.ws._
 import play.mvc.{Results, Result, Controller}
 import play.core.j.{JavaActionAnnotations, JavaAction}
 import play.libs.F
@@ -16,7 +15,7 @@ import play.libs.F
 object JavaCSRFActionSpec extends CSRFCommonSpecs {
 
   def buildCsrfCheckRequest(configuration: (String, String)*) = new CsrfTester {
-    def apply[T](makeRequest: (WSRequestHolder) => Future[Response])(handleResponse: (Response) => T) = withServer(configuration) {
+    def apply[T](makeRequest: (WSRequestHolder) => Future[WSResponse])(handleResponse: (WSResponse) => T) = withServer(configuration) {
       case _ => new JavaAction() {
         def parser = annotations.parser
         def invocation = F.Promise.pure(new MyAction().check())
@@ -28,7 +27,7 @@ object JavaCSRFActionSpec extends CSRFCommonSpecs {
   }
 
   def buildCsrfAddToken(configuration: (String, String)*) = new CsrfTester {
-    def apply[T](makeRequest: (WSRequestHolder) => Future[Response])(handleResponse: (Response) => T) = withServer(configuration) {
+    def apply[T](makeRequest: (WSRequestHolder) => Future[WSResponse])(handleResponse: (WSResponse) => T) = withServer(configuration) {
       case _ => new JavaAction() {
         def parser = annotations.parser
         def invocation = F.Promise.pure(new MyAction().add())

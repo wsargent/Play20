@@ -1,6 +1,7 @@
 package play.libs.ws.ning;
 
 import com.ning.http.client.*;
+import play.api.libs.ws.WSAPI;
 import play.libs.F;
 import play.libs.ws.*;
 
@@ -21,8 +22,11 @@ public class NingWSRequest extends RequestBuilderBase<NingWSRequest> implements 
 
     private String url;
 
-    public NingWSRequest(String method) {
+    private NingWSClient client;
+
+    public NingWSRequest(NingWSClient client, String method) {
         super(NingWSRequest.class, method, false);
+        this.client = client;
         this.method = method;
     }
 
@@ -30,9 +34,10 @@ public class NingWSRequest extends RequestBuilderBase<NingWSRequest> implements 
         return this;
     }
 
-    protected NingWSRequest auth(String username, String password, Realm.AuthScheme scheme) {
+    public WSRequest auth(String username, String password, WSAuthScheme scheme) {
+        Realm.AuthScheme authScheme = client.getAuthScheme(scheme);
         this.setRealm((new Realm.RealmBuilder())
-                .setScheme(scheme)
+                .setScheme(authScheme)
                 .setPrincipal(username)
                 .setPassword(password)
                 .setUsePreemptiveAuth(true)

@@ -14,9 +14,9 @@ public interface WSRequestHolder {
 
     String getPassword();
 
-    Realm.AuthScheme getScheme();
+    WSAuthScheme getScheme();
 
-    SignatureCalculator getCalculator();
+    WSSignatureCalculator getCalculator();
 
     int getTimeout();
 

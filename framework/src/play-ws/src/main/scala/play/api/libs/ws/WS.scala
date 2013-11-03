@@ -15,6 +15,7 @@ import scala.Some
 import com.ning.http.util.AsyncHttpProviderUtils
 import scala.xml.Elem
 import play.api.libs.json.{Json, JsValue}
+import scala.beans.BeanProperty
 
 /**
  * Asynchronous API to to query web services, as an http client.
@@ -139,7 +140,7 @@ trait WSResponse {
   /**
    * Get the underlying response object.
    */
-  def underlying : AnyRef
+  def underlying: AnyRef
 
   /**
    * The response status code.
@@ -159,12 +160,12 @@ trait WSResponse {
   /**
    * Get all the cookies.
    */
-  def cookies: Seq[Cookie]
+  def cookies: Seq[WSCookie]
 
   /**
    * Get only one cookie, using the cookie name.
    */
-  def cookie(name: String): Option[Cookie]
+  def cookie(name: String): Option[WSCookie]
 
   /**
    * The response body as String.
@@ -194,7 +195,7 @@ trait WSRequestHolder {
 
   val queryString: Map[String, Seq[String]]
 
-  val calc: Option[SignatureCalculator]
+  val calc: Option[WSSignatureCalculator]
 
   val auth: Option[(String, String, WSAuthScheme)]
 
@@ -204,13 +205,13 @@ trait WSRequestHolder {
 
   val virtualHost: Option[String]
 
-  val proxyServer: Option[ProxyServer]
+  val proxyServer: Option[WSProxyServer]
 
   /**
    * sets the signature calculator for the request
    * @param calc
    */
-  def sign(calc: SignatureCalculator): WSRequestHolder
+  def sign(calc: WSSignatureCalculator): WSRequestHolder
 
   /**
    * sets the authentication realm
@@ -241,7 +242,7 @@ trait WSRequestHolder {
 
   def withVirtualHost(vh: String): WSRequestHolder
 
-  def withProxyServer(proxyServer: ProxyServer): WSRequestHolder
+  def withProxyServer(proxyServer: WSProxyServer): WSRequestHolder
 
   /**
    * performs a get with supplied body
@@ -253,7 +254,7 @@ trait WSRequestHolder {
    * performs a get with supplied body
    * @param consumer that's handling the response
    */
-  def get[A](consumer: ResponseHeaders => Iteratee[Array[Byte], A]): Future[Iteratee[Array[Byte], A]]
+  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A]): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a PATCH on the request asynchronously.
@@ -270,7 +271,7 @@ trait WSRequestHolder {
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def patchAndRetrieveStream[A, T](body: T)(consumer: ResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
+  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a POST on the request asynchronously.
@@ -287,7 +288,7 @@ trait WSRequestHolder {
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def postAndRetrieveStream[A, T](body: T)(consumer: ResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
+  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a PUT on the request asynchronously.
@@ -304,7 +305,7 @@ trait WSRequestHolder {
    * performs a PUT with supplied body
    * @param consumer that's handling the response
    */
-  def putAndRetrieveStream[A, T](body: T)(consumer: ResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
+  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a DELETE on the request asynchronously.
@@ -326,25 +327,31 @@ trait WSRequestHolder {
 /**
  *
  */
-trait WSAuthScheme
+trait WSAuthScheme {
+  // Purposely not sealed in case clients want to add their own auth schemes.
+}
 
-case object DIGEST extends WSAuthScheme
+object WSAuthScheme {
 
-case object BASIC extends WSAuthScheme
+  case object DIGEST extends WSAuthScheme
 
-case object NTLM extends WSAuthScheme
+  case object BASIC extends WSAuthScheme
 
-case object SPNEGO extends WSAuthScheme
+  case object NTLM extends WSAuthScheme
 
-case object KERBEROS extends WSAuthScheme
+  case object SPNEGO extends WSAuthScheme
 
-case object NONE extends WSAuthScheme
+  case object KERBEROS extends WSAuthScheme
+
+  case object NONE extends WSAuthScheme
+
+}
 
 
 /**
  * A WS Cookie.  This is a trait so that we are not tied to a specific client.
  */
-trait Cookie {
+trait WSCookie {
 
   /**
    * The underlying "native" cookie object for the client.
@@ -390,37 +397,74 @@ trait Cookie {
 /**
  * A WS proxy.
  */
-case class ProxyServer(
-                        /** The hostname of the proxy server. */
-                        host: String,
+trait WSProxyServer {
+  /** The hostname of the proxy server. */
+  def host: String
 
-                        /** The port of the proxy server. */
-                        port: Int,
+  /** The port of the proxy server. */
+  def port: Int
 
-                        /** The protocol of the proxy server.  Use "http" or "https".  Defaults to "http" if not specified. */
-                        protocol: Option[String] = None,
+  /** The protocol of the proxy server.  Use "http" or "https".  Defaults to "http" if not specified. */
+  def protocol: Option[String]
 
-                        /** The principal (aka username) of the credentials for the proxy server. */
-                        principal: Option[String] = None,
+  /** The principal (aka username) of the credentials for the proxy server. */
+  def principal: Option[String]
 
-                        /** The password for the credentials for the proxy server. */
-                        password: Option[String] = None,
+  /** The password for the credentials for the proxy server. */
+  def password: Option[String]
 
-                        ntlmDomain: Option[String] = None,
+  def ntlmDomain: Option[String]
 
-                        encoding: Option[String] = None,
+  def encoding: Option[String]
 
-                        nonProxyHosts: Option[Seq[String]] = None)
+  def nonProxyHosts: Option[Seq[String]]
+}
+
+
+/**
+ * A WS proxy.
+ */
+case class DefaultWSProxyServer(
+                              /** The hostname of the proxy server. */
+                              host: String,
+
+                              /** The port of the proxy server. */
+                              port: Int,
+
+                              /** The protocol of the proxy server.  Use "http" or "https".  Defaults to "http" if not specified. */
+                              protocol: Option[String] = None,
+
+                              /** The principal (aka username) of the credentials for the proxy server. */
+                              principal: Option[String] = None,
+
+                              /** The password for the credentials for the proxy server. */
+                              password: Option[String] = None,
+
+                              ntlmDomain: Option[String] = None,
+
+                              encoding: Option[String] = None,
+
+                              nonProxyHosts: Option[Seq[String]] = None) extends WSProxyServer
+
 
 /**
  * An HTTP response header (the body has not been retrieved yet)
  */
-case class ResponseHeaders(status: Int, headers: Map[String, Seq[String]])
+trait WSResponseHeaders {
+
+  def status: Int
+
+  def headers: Map[String, Seq[String]]
+}
+
+
+case class DefaultWSResponseHeaders(status: Int, headers: Map[String, Seq[String]]) extends WSResponseHeaders
+
 
 /**
  * Sign a WS call.
  */
-trait SignatureCalculator {
+trait WSSignatureCalculator {
 
   /**
    * Sign it.
@@ -441,14 +485,13 @@ abstract class WSPlugin extends Plugin {
  *
  */
 trait WSClient {
-
+  def underlying: AnyRef
 }
 
 /**
  *
  */
 trait WSAPI {
-
   def client: WSClient
 
   def url(url: String): WSRequestHolder

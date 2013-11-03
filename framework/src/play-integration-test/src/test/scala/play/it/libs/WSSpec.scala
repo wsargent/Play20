@@ -24,7 +24,7 @@ object WSSpec extends PlaySpecification {
   }
 
   "WS@java" should {
-    import play.libs.WS
+    import play.libs.ws._
 
     "make GET Requests" in withServer { port =>
       val req = WS.url(s"http://localhost:$port/get").get
