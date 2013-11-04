@@ -6,10 +6,7 @@ package play.api.libs.ws.ning
 import org.specs2.mutable._
 import org.specs2.mock.Mockito
 
-import com.ning.http.client.{
-  Response => AHCResponse,
-  Cookie => AHCCookie
-}
+import com.ning.http.client.{Response => AHCResponse, Cookie => AHCCookie, AsyncHttpClient}
 
 import play.api.mvc._
 
@@ -20,6 +17,12 @@ import play.api.test._
 object NingWSSpec extends Specification with Mockito {
 
   "Ning WS" should {
+
+    "get the client and call AsyncHTTPClient directly" in new WithApplication {
+      val client = WS.client[AsyncHttpClient]
+      client.underlying must beAnInstanceOf[AsyncHttpClient]
+    }
+
     "support several query string values for a parameter" in new WithApplication {
       val req = WS.url("http://playframework.com/")
         .withQueryString("foo" -> "foo1", "foo" -> "foo2").asInstanceOf[NingWSRequestHolder]
