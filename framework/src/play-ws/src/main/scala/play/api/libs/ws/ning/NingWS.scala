@@ -535,7 +535,7 @@ case class NingWSRequestHolder(client: NingWSClient,
 /**
  * WSPlugin implementation hook.
  */
-class NingWSPlugin(app: Application) extends WSPlugin[AsyncHttpClient] {
+class NingWSPlugin(app: Application) extends WSPlugin {
 
   @volatile var loaded = false
 
@@ -547,12 +547,14 @@ class NingWSPlugin(app: Application) extends WSPlugin[AsyncHttpClient] {
 
   override def onStop() {
     if (loaded) {
-      api.resetClient()
+      underlyingApi.resetClient()
       loaded = false
     }
   }
 
-  lazy val api = new NingWSAPI(app)
+  lazy val underlyingApi = new NingWSAPI(app)
+
+  def api: WSAPI[AnyRef] = underlyingApi
 
 }
 
