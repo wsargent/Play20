@@ -24,6 +24,7 @@ object WSSpec extends PlaySpecification {
   }
 
   "WS@java" should {
+    import play.libs.ws.WS
     import play.libs.ws._
 
     "make GET Requests" in withServer { port =>
@@ -80,6 +81,7 @@ object WSSpec extends PlaySpecification {
 
   "WS@scala" should {
     import play.api.libs.ws.WS
+    import play.api.Play.current
 
     "make GET Requests" in withServer { port =>
       val req = WS.url(s"http://localhost:$port/get").get
@@ -90,6 +92,7 @@ object WSSpec extends PlaySpecification {
     }
 
     "Get 404 errors" in withServer { port =>
+
       val req = WS.url(s"http://localhost:$port/post").get
 
       val rep = Await.result(req, Duration(1, SECONDS))

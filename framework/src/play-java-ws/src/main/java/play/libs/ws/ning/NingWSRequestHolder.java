@@ -60,6 +60,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      * @param name
      * @param value
      */
+    @Override
     public NingWSRequestHolder setHeader(String name, String value) {
         if (headers.containsKey(name)) {
             Collection<String> values = headers.get(name);
@@ -77,6 +78,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      *
      * @param query
      */
+    @Override
     public WSRequestHolder setQueryString(String query) {
         String[] params = query.split("&");
         for (String param : params) {
@@ -100,6 +102,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      * @param name
      * @param value
      */
+    @Override
     public WSRequestHolder setQueryParameter(String name, String value) {
         if (queryParameters.containsKey(name)) {
             Collection<String> values = queryParameters.get(name);
@@ -117,6 +120,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      *
      * @param userInfo
      */
+    @Override
     public WSRequestHolder setAuth(String userInfo) {
         this.scheme = WSAuthScheme.BASIC;
 
@@ -146,6 +150,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      * @param username
      * @param password
      */
+    @Override
     public WSRequestHolder setAuth(String username, String password) {
         this.username = username;
         this.password = password;
@@ -160,6 +165,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      * @param password
      * @param scheme   authentication scheme
      */
+    @Override
     public WSRequestHolder setAuth(String username, String password, WSAuthScheme scheme) {
         this.username = username;
         this.password = password;
@@ -167,6 +173,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
         return this;
     }
 
+    @Override
     public WSRequestHolder sign(WSSignatureCalculator calculator) {
         this.calculator = calculator;
         return this;
@@ -177,6 +184,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      *
      * @param followRedirects
      */
+    @Override
     public WSRequestHolder setFollowRedirects(Boolean followRedirects) {
         this.followRedirects = followRedirects;
         return this;
@@ -187,6 +195,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      *
      * @param timeout
      */
+    @Override
     public WSRequestHolder setTimeout(int timeout) {
         this.timeout = timeout;
         return this;
@@ -198,6 +207,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      *
      * @param contentType The content type
      */
+    @Override
     public WSRequestHolder setContentType(String contentType) {
         return setHeader(HttpHeaders.Names.CONTENT_TYPE, contentType);
     }
@@ -205,6 +215,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     /**
      * @return the URL of the request.
      */
+    @Override
     public String getUrl() {
         return this.url;
     }
@@ -212,6 +223,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     /**
      * @return the headers (a copy to prevent side-effects).
      */
+    @Override
     public Map<String, Collection<String>> getHeaders() {
         return new HashMap<String, Collection<String>>(this.headers);
     }
@@ -219,6 +231,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     /**
      * @return the query parameters (a copy to prevent side-effects).
      */
+    @Override
     public Map<String, Collection<String>> getQueryParameters() {
         return new HashMap<String, Collection<String>>(this.queryParameters);
     }

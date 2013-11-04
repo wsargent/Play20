@@ -10,23 +10,27 @@ import com.ning.http.client.{
   Response => AHCResponse,
   Cookie => AHCCookie
 }
+
+import play.api.mvc._
+
 import java.util
 import play.api.libs.ws._
+import play.api.test._
 
 object NingWSSpec extends Specification with Mockito {
 
-  "WS" should {
-    "support several query string values for a parameter" in {
+  "Ning WS" should {
+    "support several query string values for a parameter" in new WithApplication {
       val req = WS.url("http://playframework.com/")
-          .withQueryString("foo"->"foo1", "foo"->"foo2").asInstanceOf[NingWSRequestHolder]
-          .prepare("GET").build
-       req.getQueryParams.get("foo").contains("foo1") must beTrue
-       req.getQueryParams.get("foo").contains("foo2") must beTrue
-       req.getQueryParams.get("foo").size must equalTo (2)
+        .withQueryString("foo" -> "foo1", "foo" -> "foo2").asInstanceOf[NingWSRequestHolder]
+        .prepare("GET").build
+      req.getQueryParams.get("foo").contains("foo1") must beTrue
+      req.getQueryParams.get("foo").contains("foo2") must beTrue
+      req.getQueryParams.get("foo").size must equalTo(2)
     }
 
-    "support a proxy server" in {
-      val proxy = NingWSProxyServer(protocol = Some("https"), host = "localhost", port = 8080, principal = Some("principal"), password = Some("password"))
+    "support a proxy server" in new WithApplication {
+      val proxy = DefaultWSProxyServer(protocol = Some("https"), host = "localhost", port = 8080, principal = Some("principal"), password = Some("password"))
       val req = WS.url("http://playframework.com/").withProxyServer(proxy).asInstanceOf[NingWSRequestHolder].prepare("GET").build
       val actual = req.getProxyServer
 
@@ -37,8 +41,8 @@ object NingWSSpec extends Specification with Mockito {
       actual.getPassword must be equalTo "password"
     }
 
-    "support a proxy server" in {
-      val proxy = ProxyServer(host = "localhost", port = 8080)
+    "support a proxy server" in new WithApplication {
+      val proxy = DefaultWSProxyServer(host = "localhost", port = 8080)
       val req = WS.url("http://playframework.com/").withProxyServer(proxy).asInstanceOf[NingWSRequestHolder].prepare("GET").build
       val actual = req.getProxyServer
 
@@ -49,32 +53,37 @@ object NingWSSpec extends Specification with Mockito {
       actual.getPassword must beNull
     }
 
-    "support patch method" in {
+    val patchFakeApp = FakeApplication(withRoutes = {
+      case ("PATCH", "/") => Action {
+        Results.Ok(play.api.libs.json.Json.obj("data" -> "body"))
+      }
+    })
+
+    "support patch method" in new WithServer(patchFakeApp) {
       import scala.concurrent.Await
       import scala.concurrent.duration._
 
-      val req = WS.url("http://httpbin.org/patch").patch("body")
+      val req = WS.url("http://localhost:" + port + "/").patch("patch")
 
       val rep = Await.result(req, Duration(2, SECONDS))
 
       rep.status must ===(200)
       (rep.json \ "data").asOpt[String] must beSome("body")
     }
-
   }
 
-  "WS Response" should {
+  "Ning WS Response" should {
     "get cookies from an AHC response" in {
 
-      val ahcResponse : AHCResponse = mock[AHCResponse]
+      val ahcResponse: AHCResponse = mock[AHCResponse]
       val (domain, name, value, path, maxAge, secure) = ("example.com", "someName", "someValue", "/", 1000, false)
 
-      val ahcCookie : AHCCookie = new AHCCookie(domain, name, value, path, maxAge, secure)
+      val ahcCookie: AHCCookie = new AHCCookie(domain, name, value, path, maxAge, secure)
       ahcResponse.getCookies returns util.Arrays.asList(ahcCookie)
 
       val response = NingWSResponse(ahcResponse)
 
-      val cookies : Seq[WSCookie] = response.cookies
+      val cookies: Seq[WSCookie] = response.cookies
       val cookie = cookies(0)
 
       cookie.domain must ===("example.com")
@@ -86,22 +95,23 @@ object NingWSSpec extends Specification with Mockito {
     }
 
     "get a single cookie from an AHC response" in {
-      val ahcResponse : AHCResponse = mock[AHCResponse]
+      val ahcResponse: AHCResponse = mock[AHCResponse]
       val (domain, name, value, path, maxAge, secure) = ("example.com", "someName", "someValue", "/", 1000, false)
 
-      val ahcCookie : AHCCookie = new AHCCookie(domain, name, value, path, maxAge, secure)
+      val ahcCookie: AHCCookie = new AHCCookie(domain, name, value, path, maxAge, secure)
       ahcResponse.getCookies returns util.Arrays.asList(ahcCookie)
 
-      val response = WSResponse(ahcResponse)
+      val response = NingWSResponse(ahcResponse)
 
       val optionCookie = response.cookie("someName")
-      optionCookie must beSome[WSCookie].which { cookie =>
-        cookie.domain must ===("example.com")
-        cookie.name must beSome("someName")
-        cookie.value must beSome("someValue")
-        cookie.path must ===("/")
-        cookie.maxAge must ===(1000)
-        cookie.secure must beFalse
+      optionCookie must beSome[WSCookie].which {
+        cookie =>
+          cookie.domain must ===("example.com")
+          cookie.name must beSome("someName")
+          cookie.value must beSome("someValue")
+          cookie.path must ===("/")
+          cookie.maxAge must ===(1000)
+          cookie.secure must beFalse
       }
     }
   }

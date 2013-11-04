@@ -26,6 +26,7 @@ public class NingWSResponse implements WSResponse {
         this.ahcResponse = ahcResponse;
     }
 
+    @Override
     public Object getUnderlying() {
         return this.ahcResponse;
     }
@@ -33,6 +34,7 @@ public class NingWSResponse implements WSResponse {
     /**
      * Get the HTTP status code of the response
      */
+    @Override
     public int getStatus() {
         return ahcResponse.getStatusCode();
     }
@@ -40,6 +42,7 @@ public class NingWSResponse implements WSResponse {
     /**
      * Get the HTTP status text of the response
      */
+    @Override
     public String getStatusText() {
         return ahcResponse.getStatusText();
     }
@@ -47,6 +50,7 @@ public class NingWSResponse implements WSResponse {
     /**
      * Get the given HTTP header of the response
      */
+    @Override
     public String getHeader(String key) {
         return ahcResponse.getHeader(key);
     }
@@ -54,6 +58,7 @@ public class NingWSResponse implements WSResponse {
     /**
      * Get all the cookies.
      */
+    @Override
     public List<WSCookie> getCookies() {
         List<WSCookie> cookieList = new ArrayList<WSCookie>();
         for (com.ning.http.client.Cookie ahcCookie : ahcResponse.getCookies()) {
@@ -65,6 +70,7 @@ public class NingWSResponse implements WSResponse {
     /**
      * Get only one cookie, using the cookie name.
      */
+    @Override
     public WSCookie getCookie(String name) {
         for (com.ning.http.client.Cookie ahcCookie : ahcResponse.getCookies()) {
             // safe -- cookie.getName() will never return null
@@ -79,6 +85,7 @@ public class NingWSResponse implements WSResponse {
      * Get the response body as a string.  If the charset is not specified, this defaults to ISO-8859-1 for text
      * sub mime types, as per RFC-2616 sec 3.7.1, otherwise it defaults to UTF-8.
      */
+    @Override
     public String getBody() {
         try {
             // RFC-2616#3.7.1 states that any text/* mime type should default to ISO-8859-1 charset if not
@@ -107,6 +114,7 @@ public class NingWSResponse implements WSResponse {
      * Get the response body as a {@link org.w3c.dom.Document DOM document}
      * @return a DOM document
      */
+    @Override
     public Document asXml() {
         try {
             return play.libs.XML.fromInputStream(ahcResponse.getResponseBodyAsStream(), "utf-8");
@@ -119,6 +127,7 @@ public class NingWSResponse implements WSResponse {
      * Get the response body as a {@link com.fasterxml.jackson.databind.JsonNode}
      * @return the json response
      */
+    @Override
     public JsonNode asJson() {
         try {
             // Jackson will automatically detect the correct encoding according to the rules in RFC-4627
@@ -132,6 +141,7 @@ public class NingWSResponse implements WSResponse {
      * Get the response body as a stream
      * @return The stream to read the response body from
      */
+    @Override
     public InputStream getBodyAsStream() {
         try {
             return ahcResponse.getResponseBodyAsStream();
@@ -144,6 +154,7 @@ public class NingWSResponse implements WSResponse {
      * Get the response body as a byte array
      * @return The byte array
      */
+    @Override
     public byte[] asByteArray() {
         try {
             return ahcResponse.getResponseBodyAsBytes();
@@ -158,6 +169,7 @@ public class NingWSResponse implements WSResponse {
      *
      * @return the request {@link java.net.URI}.
      */
+    @Override
     public URI getUri() {
         try {
             return ahcResponse.getUri();

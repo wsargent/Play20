@@ -16,6 +16,7 @@ import com.ning.http.util.AsyncHttpProviderUtils
 import scala.xml.Elem
 import play.api.libs.json.{Json, JsValue}
 import scala.beans.BeanProperty
+import play.api.libs.ws.ning.NingWSRequest
 
 /**
  * Asynchronous API to to query web services, as an http client.
@@ -234,6 +235,8 @@ trait WSRequestHolder {
    */
   def withFollowRedirects(follow: Boolean): WSRequestHolder
 
+  def withTimeout(timeout: Int): WSRequestHolder
+
   /**
    * Sets the maximum time in millisecond you accept the request to take.
    * Warning: a stream consumption will be interrupted when this time is reached.
@@ -322,6 +325,8 @@ trait WSRequestHolder {
    */
   def options(): Future[WSResponse]
 
+
+  def execute(method: String): Future[WSResponse]
 }
 
 /**
@@ -479,6 +484,7 @@ trait WSSignatureCalculator {
  */
 abstract class WSPlugin extends Plugin {
   def api: WSAPI
+  def loaded : Boolean
 }
 
 /**

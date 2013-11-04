@@ -1,11 +1,8 @@
-package play.api.libs.ws
-
+package play.api.libs.ws.ning
 
 import com.ning.http.client.{Response => AHCResponse, Cookie => AHCCookie, ProxyServer => AHCProxyServer, _}
-
-import com.ning.http.util.AsyncHttpProviderUtils
 import com.ning.http.client.Realm.{RealmBuilder, AuthScheme}
-
+import com.ning.http.util.AsyncHttpProviderUtils
 
 import collection.immutable.TreeMap
 
@@ -14,13 +11,14 @@ import scala.concurrent.{Future, Promise}
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
+import play.api.libs.ws._
 import play.api.http.{Writeable, ContentTypeOf}
 import play.api.libs.iteratee._
 import play.api.libs.iteratee.Input.El
+import play.api.{Application, Play}
 
 import play.core.utils.CaseInsensitiveOrdered
 import play.core.Execution.Implicits.internalContext
-import play.api.{Application, Play}
 
 
 class NingWSClient(config: AsyncHttpClientConfig) extends AsyncHttpClient with WSClient {
@@ -421,7 +419,7 @@ case class NingWSRequestHolder(app:Application,
    *
    * @param method The method to execute
    */
-  def execute(method: String): Future[NingWSResponse] = prepare(method).execute
+  def execute(method: String): Future[WSResponse] = prepare(method).execute
 
 
   private[play] def prepare(method: String): NingWSRequest = {

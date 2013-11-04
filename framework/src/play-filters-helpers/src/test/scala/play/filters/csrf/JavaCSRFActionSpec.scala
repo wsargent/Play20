@@ -22,6 +22,7 @@ object JavaCSRFActionSpec extends CSRFCommonSpecs {
         val annotations = new JavaActionAnnotations(classOf[MyAction], classOf[MyAction].getMethod("check"))
       }
     } {
+      import play.api.Play.current
       handleResponse(await(makeRequest(WS.url("http://localhost:" + testServerPort))))
     }
   }
@@ -34,6 +35,7 @@ object JavaCSRFActionSpec extends CSRFCommonSpecs {
         val annotations = new JavaActionAnnotations(classOf[MyAction], classOf[MyAction].getMethod("add"))
       }
     } {
+      import play.api.Play.current
       handleResponse(await(makeRequest(WS.url("http://localhost:" + testServerPort))))
     }
   }

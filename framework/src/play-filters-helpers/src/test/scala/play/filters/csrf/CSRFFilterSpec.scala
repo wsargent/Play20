@@ -52,11 +52,13 @@ object CSRFFilterSpec extends CSRFCommonSpecs {
             .getOrElse(Results.NotFound)))
       } {
         val token = Crypto.generateSignedToken
+        import play.api.Play.current
         await(WS.url("http://localhost:" + testServerPort).withSession(TokenName -> token)
           .post(Map("foo" -> "bar", TokenName -> token))).body must_== "bar"
       }
     }
-    "feed a not fully buffered body once a check has been done and passes" in new WithServer(FakeApplication(
+
+    val notBufferedFakeApp = FakeApplication(
       additionalConfiguration = Map("application.secret" -> "foobar", "csrf.body.bufferSize" -> "200"),
       withRoutes = {
         case _ => CSRFFilter()(Action(
@@ -66,9 +68,11 @@ object CSRFFilterSpec extends CSRFCommonSpecs {
             .map(Results.Ok(_))
             .getOrElse(Results.NotFound)))
       }
-    ), port = testServerPort) {
+    )
+
+    "feed a not fully buffered body once a check has been done and passes" in new WithServer(notBufferedFakeApp, testServerPort) {
       val token = Crypto.generateSignedToken
-      val response = await(WS.url("http://localhost:" + testServerPort).withSession(TokenName -> token)
+      val response = await(WS.url("http://localhost:" + port).withSession(TokenName -> token)
         .withHeaders(CONTENT_TYPE -> "application/x-www-form-urlencoded")
         .post(
           Seq(
