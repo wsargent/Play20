@@ -5,7 +5,7 @@ import play.libs.ws.*;
 /**
  * The Ning implementation of a WS cookie.
  */
-public class NingWSCookie implements WSCookie {
+public class NingWSCookie implements WSCookie<com.ning.http.client.Cookie> {
 
     private final com.ning.http.client.Cookie ahcCookie;
 
@@ -16,7 +16,7 @@ public class NingWSCookie implements WSCookie {
     /**
      * Returns the underlying "native" object for the cookie.
      */
-    public Object getUnderlying() {
+    public com.ning.http.client.Cookie getUnderlying() {
         return ahcCookie;
     }
 

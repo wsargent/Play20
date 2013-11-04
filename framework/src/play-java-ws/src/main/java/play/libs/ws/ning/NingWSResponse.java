@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * A WS response.
  */
-public class NingWSResponse implements WSResponse {
+public class NingWSResponse implements WSResponse<com.ning.http.client.Response> {
 
     private com.ning.http.client.Response ahcResponse;
 
@@ -27,7 +27,7 @@ public class NingWSResponse implements WSResponse {
     }
 
     @Override
-    public Object getUnderlying() {
+    public com.ning.http.client.Response getUnderlying() {
         return this.ahcResponse;
     }
 

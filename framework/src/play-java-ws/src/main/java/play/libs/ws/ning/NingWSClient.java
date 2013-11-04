@@ -1,22 +1,18 @@
 package play.libs.ws.ning;
 
-import com.ning.http.client.Realm;
-import play.libs.ws.WSAuthScheme;
+import com.ning.http.client.AsyncHttpClient;
 import play.libs.ws.WSClient;
 
-public class NingWSClient implements WSClient {
+public class NingWSClient implements WSClient<AsyncHttpClient> {
 
-    private play.api.libs.ws.WSClient client;
+    private play.api.libs.ws.WSClient<AsyncHttpClient> client;
 
-    public NingWSClient(play.api.libs.ws.WSClient client) {
+    public NingWSClient(play.api.libs.ws.WSClient<AsyncHttpClient> client) {
         this.client = client;
     }
 
-    public Object getUnderlying() {
+    public AsyncHttpClient getUnderlying() {
         return this.client.underlying();
     }
 
-    public Realm.AuthScheme getAuthScheme(WSAuthScheme scheme) {
-        return Realm.AuthScheme.valueOf(scheme.name());
-    }
 }

@@ -10,13 +10,9 @@ import java.util.List;
 /**
  *
  */
-public interface WSResponse {
+public interface WSResponse<T> {
 
-    /**
-     *
-     * @return
-     */
-    public Object getUnderlying();
+    public T getUnderlying();
 
     int getStatus();
 

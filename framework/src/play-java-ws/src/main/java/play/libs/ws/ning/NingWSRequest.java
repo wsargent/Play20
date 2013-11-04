@@ -1,9 +1,10 @@
 package play.libs.ws.ning;
 
 import com.ning.http.client.*;
-import play.api.libs.ws.WSAPI;
 import play.libs.F;
-import play.libs.ws.*;
+import play.libs.ws.WS;
+import play.libs.ws.WSAuthScheme;
+import play.libs.ws.WSRequest;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,20 +23,17 @@ public class NingWSRequest extends RequestBuilderBase<NingWSRequest> implements 
 
     private String url;
 
-    private NingWSClient client;
-
-    public NingWSRequest(NingWSClient client, String method) {
+    public NingWSRequest(String method) {
         super(NingWSRequest.class, method, false);
-        this.client = client;
         this.method = method;
     }
 
-    public Object getUnderlying() {
-        return this;
+    public Realm.AuthScheme getAuthScheme(WSAuthScheme scheme) {
+        return Realm.AuthScheme.valueOf(scheme.name());
     }
 
-    public WSRequest auth(String username, String password, WSAuthScheme scheme) {
-        Realm.AuthScheme authScheme = client.getAuthScheme(scheme);
+    public NingWSRequest auth(String username, String password, WSAuthScheme scheme) {
+        Realm.AuthScheme authScheme = getAuthScheme(scheme);
         this.setRealm((new Realm.RealmBuilder())
                 .setScheme(authScheme)
                 .setPrincipal(username)
@@ -48,7 +46,6 @@ public class NingWSRequest extends RequestBuilderBase<NingWSRequest> implements 
     /**
      * Set an HTTP header.
      */
-    @Override
     public NingWSRequest setHeader(String name, String value) {
         headers.replace(name, value);
         return super.setHeader(name, value);
@@ -57,7 +54,6 @@ public class NingWSRequest extends RequestBuilderBase<NingWSRequest> implements 
     /**
      * Add an HTTP header (used for headers with mutiple values).
      */
-    @Override
     public NingWSRequest addHeader(String name, String value) {
         if (value == null) {
             value = "";
@@ -69,7 +65,6 @@ public class NingWSRequest extends RequestBuilderBase<NingWSRequest> implements 
     /**
      * Defines the request headers.
      */
-    @Override
     public NingWSRequest setHeaders(FluentCaseInsensitiveStringsMap hdrs) {
         headers = (headers == null ? new FluentCaseInsensitiveStringsMap() : headers);
         return super.setHeaders(hdrs);
@@ -78,7 +73,6 @@ public class NingWSRequest extends RequestBuilderBase<NingWSRequest> implements 
     /**
      * Defines the request headers.
      */
-    @Override
     public NingWSRequest setHeaders(Map<String, Collection<String>> hdrs) {
         headers = (headers == null ? new FluentCaseInsensitiveStringsMap() : new FluentCaseInsensitiveStringsMap(headers));
         return super.setHeaders(hdrs);
@@ -101,7 +95,6 @@ public class NingWSRequest extends RequestBuilderBase<NingWSRequest> implements 
         return this.method;
     }
 
-    @Override
     public NingWSRequest setUrl(String url) {
         this.url = url;
         return super.setUrl(url);
@@ -111,6 +104,7 @@ public class NingWSRequest extends RequestBuilderBase<NingWSRequest> implements 
         return this.url;
     }
 
+    @Override
     public F.Promise<play.libs.ws.WSResponse> execute() {
         final scala.concurrent.Promise<play.libs.ws.WSResponse> scalaPromise = scala.concurrent.Promise$.MODULE$.<play.libs.ws.WSResponse>apply();
         try {

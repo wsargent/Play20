@@ -4,12 +4,12 @@ package play.libs.ws;
 /**
  * A WS Cookie.
  */
-public interface WSCookie {
+public interface WSCookie<T> {
 
     /**
      * Returns the underlying "native" object for the cookie.
      */
-    public Object getUnderlying();
+    public T getUnderlying();
 
     public String getDomain();
 

@@ -3,7 +3,6 @@
  */
 package play.libs.ws;
 
-import play.api.libs.ws.WSAPI;
 import play.libs.ws.ning.NingWSClient;
 import play.libs.ws.ning.NingWSRequestHolder;
 

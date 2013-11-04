@@ -433,7 +433,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
      */
     @Override
     public F.Promise<play.libs.ws.WSResponse> execute(String method) {
-        NingWSRequest req = new NingWSRequest(client, method).setUrl(url)
+        NingWSRequest req = new NingWSRequest(method).setUrl(url)
                 .setHeaders(headers)
                 .setQueryParameters(new FluentStringsMap(queryParameters));
         return execute(req);
@@ -453,7 +453,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
             headers.replace(HttpHeaders.Names.CONTENT_TYPE, contentType + "; charset=utf-8");
         }
 
-        NingWSRequest req = new NingWSRequest(client, method).setBody(body)
+        NingWSRequest req = new NingWSRequest(method).setBody(body)
                 .setUrl(url)
                 .setHeaders(headers)
                 .setQueryParameters(new FluentStringsMap(queryParameters))
@@ -462,7 +462,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     }
 
     private F.Promise<play.libs.ws.WSResponse> executeJson(String method, JsonNode body) {
-        NingWSRequest req = new NingWSRequest(client, method).setBody(Json.stringify(body))
+        NingWSRequest req = new NingWSRequest(method).setBody(Json.stringify(body))
                 .setUrl(url)
                 .setHeaders(headers)
                 .setHeader(HttpHeaders.Names.CONTENT_TYPE, "application/json; charset=utf-8")
@@ -473,7 +473,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     }
 
     private F.Promise<play.libs.ws.WSResponse> executeIS(String method, InputStream body) {
-        NingWSRequest req = new NingWSRequest(client, method).setBody(body)
+        NingWSRequest req = new NingWSRequest(method).setBody(body)
                 .setUrl(url)
                 .setHeaders(headers)
                 .setQueryParameters(new FluentStringsMap(queryParameters));
@@ -481,7 +481,7 @@ public class NingWSRequestHolder implements WSRequestHolder {
     }
 
     private F.Promise<play.libs.ws.WSResponse> executeFile(String method, File body) {
-        NingWSRequest req = new NingWSRequest(client, method).setBody(body)
+        NingWSRequest req = new NingWSRequest(method).setBody(body)
                 .setUrl(url)
                 .setHeaders(headers)
                 .setQueryParameters(new FluentStringsMap(queryParameters));

@@ -1,6 +1,10 @@
 package play.libs.ws;
 
-public interface WSClient {
+/**
+ *
+ * @param <T>
+ */
+public interface WSClient<T> {
 
-    public Object getUnderlying();
+    public T getUnderlying();
 }
