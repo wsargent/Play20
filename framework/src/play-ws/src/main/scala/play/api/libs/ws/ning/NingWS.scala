@@ -21,8 +21,8 @@ import play.core.utils.CaseInsensitiveOrdered
 import play.core.Execution.Implicits.internalContext
 
 
-class NingWSClient(config: AsyncHttpClientConfig) extends AsyncHttpClient with WSClient {
-  def underlying: AnyRef = this
+class NingWSClient(config: AsyncHttpClientConfig) extends AsyncHttpClient with WSClient[AsyncHttpClient] {
+  def underlying: AsyncHttpClient = this
 }
 
 /**
@@ -537,7 +537,7 @@ case class NingWSRequestHolder(app:Application,
 /**
  * WSPlugin implementation hook.
  */
-class NingWSPlugin(app: Application) extends WSPlugin {
+class NingWSPlugin(app: Application) extends WSPlugin[AsyncHttpClient] {
 
   @volatile var loaded = false
 
@@ -558,7 +558,7 @@ class NingWSPlugin(app: Application) extends WSPlugin {
 
 }
 
-class NingWSAPI(app:Application) extends WSAPI {
+class NingWSAPI(app:Application) extends WSAPI[AsyncHttpClient] {
 
   import javax.net.ssl.SSLContext
 
@@ -583,7 +583,7 @@ class NingWSAPI(app:Application) extends WSAPI {
     new NingWSClient(asyncHttpConfig.build())
   }
 
-  def client: WSClient = {
+  def client: WSClient[AsyncHttpClient] = {
     clientHolder.get.getOrElse({
       // A critical section of code. Only one caller has the opportuntity of creating a new client.
       synchronized {

@@ -42,8 +42,8 @@ object WS {
   @deprecated("Please use play.api.libs.ws.WSRequestHolder", "2.3.0")
   type WSRequestHolder = play.api.libs.ws.WSRequestHolder
 
-  private def wsapi(implicit app: Application): WSAPI = {
-    app.plugin[WSPlugin] match {
+  private def wsapi(implicit app: Application): WSAPI[AnyRef] = {
+    app.plugin[WSPlugin[AnyRef]] match {
       case Some(plugin) => plugin.api
       case None => throw new Exception("There is no WS plugin registered.")
     }
@@ -52,7 +52,7 @@ object WS {
   /**
    * retrieves or creates underlying HTTP client.
    */
-  def client(implicit app: Application): WSClient = wsapi.client
+  def client(implicit app: Application): WSClient[AnyRef] = wsapi.client
 
 
   /**
@@ -482,23 +482,23 @@ trait WSSignatureCalculator {
 /**
  *
  */
-abstract class WSPlugin extends Plugin {
-  def api: WSAPI
+abstract class WSPlugin[+T] extends Plugin {
+  def api: WSAPI[T]
   def loaded : Boolean
 }
 
 /**
  *
  */
-trait WSClient {
-  def underlying: AnyRef
+trait WSClient[+T] {
+  def underlying: T
 }
 
 /**
  *
  */
-trait WSAPI {
-  def client: WSClient
+trait WSAPI[+T] {
+  def client: WSClient[T]
 
   def url(url: String): WSRequestHolder
 }
