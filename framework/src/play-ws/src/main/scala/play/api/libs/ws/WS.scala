@@ -11,12 +11,9 @@ import play.api.http.{Writeable, ContentTypeOf}
 import play.api.libs.iteratee._
 
 import play.api.{Play, Application, Plugin}
-import scala.Some
-import com.ning.http.util.AsyncHttpProviderUtils
 import scala.xml.Elem
 import play.api.libs.json.{Json, JsValue}
 import scala.beans.BeanProperty
-import play.api.libs.ws.ning.NingWSRequest
 
 /**
  * Asynchronous API to to query web services, as an http client.
@@ -130,7 +127,7 @@ trait WSRequest {
    */
   def setQueryString(queryString: Map[String, Seq[String]]): WSRequest
 
-  def setUrl(url: String): NingWSRequest
+  def setUrl(url: String): WSRequest
 }
 
 /**
