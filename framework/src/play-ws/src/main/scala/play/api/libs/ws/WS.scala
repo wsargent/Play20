@@ -3,7 +3,7 @@
  */
 package play.api.libs.ws
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, ExecutionContext}
 
 import java.io.File
 
@@ -11,12 +11,8 @@ import play.api.http.{Writeable, ContentTypeOf}
 import play.api.libs.iteratee._
 
 import play.api.{Play, Application, Plugin}
-import scala.Some
-import com.ning.http.util.AsyncHttpProviderUtils
 import scala.xml.Elem
-import play.api.libs.json.{Json, JsValue}
-import scala.beans.BeanProperty
-import play.api.libs.ws.ning.NingWSRequest
+import play.api.libs.json.JsValue
 
 /**
  * Asynchronous API to to query web services, as an http client.
@@ -42,8 +38,8 @@ object WS {
   @deprecated("Please use play.api.libs.ws.WSRequestHolder", "2.3.0")
   type WSRequestHolder = play.api.libs.ws.WSRequestHolder
 
-  private def wsapi(implicit app: Application): WSAPI = {
-    app.plugin[WSPlugin] match {
+  private def wsapi(implicit app: Application): WSAPI[AnyRef] = {
+    app.plugin[WSPlugin[AnyRef]] match {
       case Some(plugin) => plugin.api
       case None => throw new Exception("There is no WS plugin registered.")
     }
@@ -52,7 +48,7 @@ object WS {
   /**
    * retrieves or creates underlying HTTP client.
    */
-  def client(implicit app: Application): WSClient = wsapi.client
+  def client(implicit app: Application): WSClient[AnyRef] = wsapi.client
 
 
   /**
@@ -130,7 +126,7 @@ trait WSRequest {
    */
   def setQueryString(queryString: Map[String, Seq[String]]): WSRequest
 
-  def setUrl(url: String): NingWSRequest
+  def setUrl(url: String): WSRequest
 }
 
 /**
@@ -257,7 +253,7 @@ trait WSRequestHolder {
    * performs a get with supplied body
    * @param consumer that's handling the response
    */
-  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A]): Future[Iteratee[Array[Byte], A]]
+  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a PATCH on the request asynchronously.
@@ -274,7 +270,7 @@ trait WSRequestHolder {
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
+  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a POST on the request asynchronously.
@@ -291,7 +287,7 @@ trait WSRequestHolder {
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
+  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a PUT on the request asynchronously.
@@ -308,7 +304,7 @@ trait WSRequestHolder {
    * performs a PUT with supplied body
    * @param consumer that's handling the response
    */
-  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
+  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a DELETE on the request asynchronously.
@@ -324,7 +320,6 @@ trait WSRequestHolder {
    * Perform a OPTIONS on the request asynchronously.
    */
   def options(): Future[WSResponse]
-
 
   def execute(method: String): Future[WSResponse]
 }
@@ -482,23 +477,24 @@ trait WSSignatureCalculator {
 /**
  *
  */
-abstract class WSPlugin extends Plugin {
-  def api: WSAPI
+abstract class WSPlugin[+T] extends Plugin {
+  def api: WSAPI[T]
   def loaded : Boolean
 }
 
 /**
  *
  */
-trait WSClient {
-  def underlying: AnyRef
+trait WSClient[+T] {
+  def underlying: T
 }
 
 /**
  *
  */
-trait WSAPI {
-  def client: WSClient
+trait WSAPI[+T] {
+  def client: WSClient[T]
 
   def url(url: String): WSRequestHolder
 }
+

@@ -1,3 +1,6 @@
+/*
+ * Copyright (C) 2009-2013 Typesafe Inc. <http://www.typesafe.com>
+ */
 package play.api.libs.ws.ning
 
 import com.ning.http.client.{Response => AHCResponse, Cookie => AHCCookie, ProxyServer => AHCProxyServer, _}
@@ -6,7 +9,7 @@ import com.ning.http.util.AsyncHttpProviderUtils
 
 import collection.immutable.TreeMap
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{Future, Promise, ExecutionContext}
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
@@ -18,17 +21,16 @@ import play.api.libs.iteratee.Input.El
 import play.api.{Application, Play}
 
 import play.core.utils.CaseInsensitiveOrdered
-import play.core.Execution.Implicits.internalContext
 
 
-class NingWSClient(config: AsyncHttpClientConfig) extends AsyncHttpClient with WSClient {
-  def underlying: AnyRef = this
+class NingWSClient(config: AsyncHttpClientConfig) extends AsyncHttpClient with WSClient[AsyncHttpClient] {
+  def underlying: AsyncHttpClient = this
 }
 
 /**
  * A WS Request.
  */
-class NingWSRequest(app: Application, _method: String, _auth: Option[(String, String, WSAuthScheme)], _calc: Option[WSSignatureCalculator])
+class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String, String, WSAuthScheme)], _calc: Option[WSSignatureCalculator])
   extends RequestBuilderBase[NingWSRequest](classOf[NingWSRequest], _method, false)
   with WSRequest {
 
@@ -169,8 +171,7 @@ class NingWSRequest(app: Application, _method: String, _auth: Option[(String, St
     import com.ning.http.client.AsyncCompletionHandler
     var result = Promise[NingWSResponse]()
     calculator.map(_.sign(this))
-    val ningClient: NingWSClient = WS.client(app).asInstanceOf[NingWSClient]
-    ningClient.executeRequest(this.build(), new AsyncCompletionHandler[AHCResponse]() {
+    client.executeRequest(this.build(), new AsyncCompletionHandler[AHCResponse]() {
       override def onCompleted(response: AHCResponse) = {
         result.success(NingWSResponse(response))
         response
@@ -192,7 +193,7 @@ class NingWSRequest(app: Application, _method: String, _auth: Option[(String, St
     super.setUrl(url)
   }
 
-  private[libs] def executeStream[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit app: Application): Future[Iteratee[Array[Byte], A]] = {
+  private[libs] def executeStream[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = {
     import com.ning.http.client.AsyncHandler
     var doneOrError = false
     calculator.map(_.sign(this))
@@ -201,8 +202,7 @@ class NingWSRequest(app: Application, _method: String, _auth: Option[(String, St
     val iterateeP = Promise[Iteratee[Array[Byte], A]]()
     var iteratee: Iteratee[Array[Byte], A] = null
 
-    val ningClient: NingWSClient = WS.client.asInstanceOf[NingWSClient]
-    ningClient.executeRequest(this.build(), new AsyncHandler[Unit]() {
+    client.executeRequest(this.build(), new AsyncHandler[Unit]() {
 
       import com.ning.http.client.AsyncHandler.STATE
 
@@ -264,7 +264,7 @@ class NingWSRequest(app: Application, _method: String, _auth: Option[(String, St
 /**
  * A WS Request builder.
  */
-case class NingWSRequestHolder(app:Application,
+case class NingWSRequestHolder(client: NingWSClient,
                                url: String,
                                headers: Map[String, Seq[String]],
                                queryString: Map[String, Seq[String]],
@@ -339,13 +339,11 @@ case class NingWSRequestHolder(app:Application,
 
   def get(): Future[NingWSResponse] = prepare("GET").execute
 
-  private implicit val implicitApp = app
-
   /**
    * performs a get with supplied body
    * @param consumer that's handling the response
    */
-  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A]): Future[Iteratee[Array[Byte], A]] =
+  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] =
     prepare("GET").executeStream(consumer)
 
   /**
@@ -363,7 +361,7 @@ case class NingWSRequestHolder(app:Application,
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("PATCH", body).executeStream(consumer)
+  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = prepare("PATCH", body).executeStream(consumer)
 
   /**
    * Perform a POST on the request asynchronously.
@@ -380,7 +378,7 @@ case class NingWSRequestHolder(app:Application,
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("POST", body).executeStream(consumer)
+  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = prepare("POST", body).executeStream(consumer)
 
   /**
    * Perform a PUT on the request asynchronously.
@@ -397,7 +395,7 @@ case class NingWSRequestHolder(app:Application,
    * performs a PUT with supplied body
    * @param consumer that's handling the response
    */
-  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("PUT", body).executeStream(consumer)
+  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = prepare("PUT", body).executeStream(consumer)
 
   /**
    * Perform a DELETE on the request asynchronously.
@@ -423,7 +421,7 @@ case class NingWSRequestHolder(app:Application,
 
 
   private[play] def prepare(method: String): NingWSRequest = {
-    val request: NingWSRequest = new NingWSRequest(app, method, auth, calc).setUrl(url)
+    val request: NingWSRequest = new NingWSRequest(client, method, auth, calc).setUrl(url)
       .setHeaders(headers)
       .setQueryString(queryString)
     followRedirects.map(request.setFollowRedirects)
@@ -491,7 +489,7 @@ case class NingWSRequestHolder(app:Application,
 
     val bodyGenerator = new FileBodyGenerator(body)
 
-    val request = new NingWSRequest(app, method, auth, calc).setUrl(url)
+    val request = new NingWSRequest(client, method, auth, calc).setUrl(url)
       .setHeaders(headers)
       .setQueryString(queryString)
       .setBody(bodyGenerator)
@@ -513,7 +511,7 @@ case class NingWSRequestHolder(app:Application,
   }
 
   private[play] def prepare[T](method: String, body: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): NingWSRequest = {
-    val request = new NingWSRequest(app, method, auth, calc).setUrl(url)
+    val request = new NingWSRequest(client, method, auth, calc).setUrl(url)
       .setHeaders(Map("Content-Type" -> Seq(ct.mimeType.getOrElse("text/plain"))) ++ headers)
       .setQueryString(queryString)
       .setBody(wrt.transform(body))
@@ -537,7 +535,7 @@ case class NingWSRequestHolder(app:Application,
 /**
  * WSPlugin implementation hook.
  */
-class NingWSPlugin(app: Application) extends WSPlugin {
+class NingWSPlugin(app: Application) extends WSPlugin[AsyncHttpClient] {
 
   @volatile var loaded = false
 
@@ -558,7 +556,7 @@ class NingWSPlugin(app: Application) extends WSPlugin {
 
 }
 
-class NingWSAPI(app:Application) extends WSAPI {
+class NingWSAPI(app: Application) extends WSAPI[AsyncHttpClient] {
 
   import javax.net.ssl.SSLContext
 
@@ -583,7 +581,7 @@ class NingWSAPI(app:Application) extends WSAPI {
     new NingWSClient(asyncHttpConfig.build())
   }
 
-  def client: WSClient = {
+  def client: NingWSClient = {
     clientHolder.get.getOrElse({
       // A critical section of code. Only one caller has the opportuntity of creating a new client.
       synchronized {
@@ -600,7 +598,7 @@ class NingWSAPI(app:Application) extends WSAPI {
     })
   }
 
-  def url(url: String) = NingWSRequestHolder(app, url, Map(), Map(), None, None, None, None, None, None)
+  def url(url: String) = NingWSRequestHolder(client, url, Map(), Map(), None, None, None, None, None, None)
 
 
   /**
