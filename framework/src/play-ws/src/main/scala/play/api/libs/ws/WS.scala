@@ -39,7 +39,7 @@ object WS {
   type WSRequestHolder = play.api.libs.ws.WSRequestHolder
 
   private def wsapi(implicit app: Application): WSAPI[AnyRef] = {
-    app.plugin[WSPlugin[AnyRef]] match {
+    app.plugin[WSPlugin] match {
       case Some(plugin) => plugin.api
       case None => throw new Exception("There is no WS plugin registered.")
     }
@@ -477,8 +477,8 @@ trait WSSignatureCalculator {
 /**
  *
  */
-abstract class WSPlugin[+T] extends Plugin {
-  def api: WSAPI[T]
+abstract class WSPlugin extends Plugin {
+  def api: WSAPI[AnyRef]
   def loaded : Boolean
 }
 
