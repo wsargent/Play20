@@ -3,7 +3,7 @@
  */
 package play.api.libs.ws
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, ExecutionContext}
 
 import java.io.File
 
@@ -253,7 +253,7 @@ trait WSRequestHolder {
    * performs a get with supplied body
    * @param consumer that's handling the response
    */
-  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A]): Future[Iteratee[Array[Byte], A]]
+  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a PATCH on the request asynchronously.
@@ -270,7 +270,7 @@ trait WSRequestHolder {
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
+  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a POST on the request asynchronously.
@@ -287,7 +287,7 @@ trait WSRequestHolder {
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
+  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a PUT on the request asynchronously.
@@ -304,7 +304,7 @@ trait WSRequestHolder {
    * performs a PUT with supplied body
    * @param consumer that's handling the response
    */
-  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]]
+  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]]
 
   /**
    * Perform a DELETE on the request asynchronously.

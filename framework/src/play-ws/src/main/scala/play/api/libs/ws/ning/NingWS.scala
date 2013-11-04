@@ -9,7 +9,7 @@ import com.ning.http.util.AsyncHttpProviderUtils
 
 import collection.immutable.TreeMap
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{Future, Promise, ExecutionContext}
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
@@ -21,7 +21,6 @@ import play.api.libs.iteratee.Input.El
 import play.api.{Application, Play}
 
 import play.core.utils.CaseInsensitiveOrdered
-import play.core.Execution.Implicits.internalContext
 
 
 class NingWSClient(config: AsyncHttpClientConfig) extends AsyncHttpClient with WSClient[AsyncHttpClient] {
@@ -194,7 +193,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
     super.setUrl(url)
   }
 
-  private[libs] def executeStream[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A]): Future[Iteratee[Array[Byte], A]] = {
+  private[libs] def executeStream[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = {
     import com.ning.http.client.AsyncHandler
     var doneOrError = false
     calculator.map(_.sign(this))
@@ -344,7 +343,7 @@ case class NingWSRequestHolder(client: NingWSClient,
    * performs a get with supplied body
    * @param consumer that's handling the response
    */
-  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A]): Future[Iteratee[Array[Byte], A]] =
+  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] =
     prepare("GET").executeStream(consumer)
 
   /**
@@ -362,7 +361,7 @@ case class NingWSRequestHolder(client: NingWSClient,
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("PATCH", body).executeStream(consumer)
+  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = prepare("PATCH", body).executeStream(consumer)
 
   /**
    * Perform a POST on the request asynchronously.
@@ -379,7 +378,7 @@ case class NingWSRequestHolder(client: NingWSClient,
    * performs a POST with supplied body
    * @param consumer that's handling the response
    */
-  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("POST", body).executeStream(consumer)
+  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = prepare("POST", body).executeStream(consumer)
 
   /**
    * Perform a PUT on the request asynchronously.
@@ -396,7 +395,7 @@ case class NingWSRequestHolder(client: NingWSClient,
    * performs a PUT with supplied body
    * @param consumer that's handling the response
    */
-  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Iteratee[Array[Byte], A]] = prepare("PUT", body).executeStream(consumer)
+  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = prepare("PUT", body).executeStream(consumer)
 
   /**
    * Perform a DELETE on the request asynchronously.
