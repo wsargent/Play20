@@ -1,3 +1,6 @@
+/*
+ * Copyright (C) 2009-2013 Typesafe Inc. <http://www.typesafe.com>
+ */
 package play.api.libs.ws.ning
 
 import com.ning.http.client.{Response => AHCResponse, Cookie => AHCCookie, ProxyServer => AHCProxyServer, _}

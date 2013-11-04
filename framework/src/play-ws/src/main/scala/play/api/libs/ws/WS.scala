@@ -12,8 +12,7 @@ import play.api.libs.iteratee._
 
 import play.api.{Play, Application, Plugin}
 import scala.xml.Elem
-import play.api.libs.json.{Json, JsValue}
-import scala.beans.BeanProperty
+import play.api.libs.json.JsValue
 
 /**
  * Asynchronous API to to query web services, as an http client.
@@ -322,7 +321,6 @@ trait WSRequestHolder {
    */
   def options(): Future[WSResponse]
 
-
   def execute(method: String): Future[WSResponse]
 }
 
@@ -499,3 +497,4 @@ trait WSAPI[+T] {
 
   def url(url: String): WSRequestHolder
 }
+
