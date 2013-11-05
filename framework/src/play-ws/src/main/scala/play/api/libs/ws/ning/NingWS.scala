@@ -23,8 +23,14 @@ import play.api.{Application, Play}
 import play.core.utils.CaseInsensitiveOrdered
 
 
-class NingWSClient(config: AsyncHttpClientConfig) extends AsyncHttpClient with WSClient[AsyncHttpClient] {
-  def underlying: AsyncHttpClient = this
+class NingWSClient(config: AsyncHttpClientConfig) extends WSClient {
+  private val asyncHttpClient = new AsyncHttpClient(config)
+
+  def underlying[T] = asyncHttpClient.asInstanceOf[T]
+
+  def executeRequest[T](request:Request, handler:AsyncHandler[T]) : ListenableFuture[T] = asyncHttpClient.executeRequest(request, handler)
+
+  def close() = asyncHttpClient.close()
 }
 
 /**
@@ -36,7 +42,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
 
   import scala.collection.JavaConverters._
 
-  def getStringData : String = body.getOrElse("")
+  def getStringData: String = body.getOrElse("")
 
   protected var body: Option[String] = None
 
@@ -108,7 +114,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
   /**
    * Set an HTTP header.
    */
-  override def setHeader(name: String, value: String) : NingWSRequest = {
+  override def setHeader(name: String, value: String): NingWSRequest = {
     headers = headers + (name -> List(value))
     super.setHeader(name, value)
   }
@@ -116,7 +122,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
   /**
    * Add an HTTP header (used for headers with multiple values).
    */
-  override def addHeader(name: String, value: String) : NingWSRequest = {
+  override def addHeader(name: String, value: String): NingWSRequest = {
     headers = headers + (name -> (headers.get(name).getOrElse(List()) :+ value))
     super.addHeader(name, value)
   }
@@ -124,7 +130,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
   /**
    * Defines the request headers.
    */
-  override def setHeaders(hdrs: FluentCaseInsensitiveStringsMap) : NingWSRequest  = {
+  override def setHeaders(hdrs: FluentCaseInsensitiveStringsMap): NingWSRequest = {
     headers = ningHeadersToMap(hdrs)
     super.setHeaders(hdrs)
   }
@@ -132,7 +138,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
   /**
    * Defines the request headers.
    */
-  override def setHeaders(hdrs: java.util.Map[String, java.util.Collection[String]]) : NingWSRequest  = {
+  override def setHeaders(hdrs: java.util.Map[String, java.util.Collection[String]]): NingWSRequest = {
     headers = ningHeadersToMap(hdrs)
     super.setHeaders(hdrs)
   }
@@ -140,7 +146,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
   /**
    * Defines the request headers.
    */
-  def setHeaders(hdrs: Map[String, Seq[String]]) : NingWSRequest  = {
+  def setHeaders(hdrs: Map[String, Seq[String]]): NingWSRequest = {
     headers = hdrs
     hdrs.foreach(header => header._2.foreach(value =>
       super.addHeader(header._1, value)
@@ -151,7 +157,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
   /**
    * Defines the query string.
    */
-  def setQueryString(queryString: Map[String, Seq[String]]) : NingWSRequest  = {
+  def setQueryString(queryString: Map[String, Seq[String]]): NingWSRequest = {
     for ((key, values) <- queryString; value <- values) {
       this.addQueryParameter(key, value)
     }
@@ -188,7 +194,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
   /**
    * Defines the URL.
    */
-  override def setUrl(url: String) : NingWSRequest = {
+  override def setUrl(url: String): NingWSRequest = {
     _url = url
     super.setUrl(url)
   }
@@ -552,13 +558,13 @@ class NingWSPlugin(app: Application) extends WSPlugin {
     }
   }
 
-  def api[T] = ningAPI.asInstanceOf[WSAPI[T]]
+  def api = ningAPI
 
   private lazy val ningAPI = new NingWSAPI(app)
 
 }
 
-class NingWSAPI(app: Application) extends WSAPI[AsyncHttpClient] {
+class NingWSAPI(app: Application) extends WSAPI {
 
   import javax.net.ssl.SSLContext
 
@@ -624,7 +630,7 @@ private class NingWSCookie(ahcCookie: AHCCookie) extends WSCookie {
   /**
    * The underlying cookie object for the client.
    */
-  def underlying = ahcCookie
+  def underlying[T] = ahcCookie.asInstanceOf[T]
 
   /**
    * The domain.
@@ -687,7 +693,7 @@ case class NingWSResponse(ahcResponse: AHCResponse) extends WSResponse {
   /**
    * @return The underlying response object.
    */
-  def underlying = ahcResponse
+  def underlying[T] = ahcResponse.asInstanceOf[T]
 
   /**
    * The response status code.

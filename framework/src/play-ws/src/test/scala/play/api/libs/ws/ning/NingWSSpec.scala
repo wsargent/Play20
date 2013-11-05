@@ -19,8 +19,16 @@ object NingWSSpec extends Specification with Mockito {
   "Ning WS" should {
 
     "get the client and call AsyncHTTPClient directly" in new WithApplication {
-      val client = WS.client[AsyncHttpClient]
-      client.underlying must beAnInstanceOf[AsyncHttpClient]
+      val client = WS.client
+      client.underlying[AsyncHttpClient] must beAnInstanceOf[AsyncHttpClient]
+    }
+
+    "get cookie" in new WithApplication() {
+      import com.ning.http.client.Cookie
+
+      val mockCookie = mock[Cookie]
+      val cookie = new NingWSCookie(mockCookie)
+      val thisCookie = cookie.underlying[Cookie]
     }
 
     "support several query string values for a parameter" in new WithApplication {
@@ -58,7 +66,11 @@ object NingWSSpec extends Specification with Mockito {
 
     val patchFakeApp = FakeApplication(withRoutes = {
       case ("PATCH", "/") => Action {
-        Results.Ok(play.api.libs.json.Json.obj("data" -> "body"))
+        Results.Ok(play.api.libs.json.Json.parse(
+          """{
+            |  "data": "body"
+            |}
+          """.stripMargin))
       }
     })
 
@@ -66,7 +78,8 @@ object NingWSSpec extends Specification with Mockito {
       import scala.concurrent.Await
       import scala.concurrent.duration._
 
-      val req = WS.url("http://localhost:" + port + "/").patch("patch")
+      // NOTE: if you are using a client proxy like Privoxy or Polipo, your proxy may not support PATCH & return 400.
+      val req = WS.url("http://localhost:" + port + "/").patch("body")
 
       val rep = Await.result(req, Duration(2, SECONDS))
 

@@ -38,7 +38,7 @@ object WS {
   @deprecated("Please use play.api.libs.ws.WSRequestHolder", "2.3.0")
   type WSRequestHolder = play.api.libs.ws.WSRequestHolder
 
-  protected[play] def wsapi[T](implicit app: Application): WSAPI[T] = {
+  protected[play] def wsapi(implicit app: Application): WSAPI = {
     app.plugin[WSPlugin] match {
       case Some(plugin) => plugin.api
       case None => throw new Exception("There is no WS plugin registered.")
@@ -48,7 +48,7 @@ object WS {
   /**
    * retrieves or creates underlying HTTP client.
    */
-  def client[T](implicit app: Application): WSClient[T] = wsapi.client
+  def client(implicit app: Application): WSClient = wsapi.client
 
   /**
    * Prepare a new request. You can then construct it by chaining calls.
@@ -136,7 +136,7 @@ trait WSResponse {
   /**
    * Get the underlying response object.
    */
-  def underlying: AnyRef
+  def underlying[T]: T
 
   /**
    * The response status code.
@@ -230,6 +230,7 @@ trait WSRequestHolder {
    */
   def withFollowRedirects(follow: Boolean): WSRequestHolder
 
+  @scala.deprecated("use withRequestTimeout instead", "2.1.0")
   def withTimeout(timeout: Int): WSRequestHolder
 
   /**
@@ -355,7 +356,7 @@ trait WSCookie {
   /**
    * The underlying "native" cookie object for the client.
    */
-  def underlying: AnyRef
+  def underlying[T]: T
 
   /**
    * The domain.
@@ -477,22 +478,25 @@ trait WSSignatureCalculator {
  *
  */
 abstract class WSPlugin extends Plugin {
-  def api[T]: WSAPI[T]
+
+  def api: WSAPI
+
   def loaded : Boolean
 }
 
 /**
  *
  */
-trait WSClient[+T] {
-  def underlying: T
+trait WSClient {
+  def underlying[T]: T
 }
 
 /**
  *
  */
-trait WSAPI[+T] {
-  def client: WSClient[T]
+trait WSAPI {
+
+  def client: WSClient
 
   def url(url: String): WSRequestHolder
 }
