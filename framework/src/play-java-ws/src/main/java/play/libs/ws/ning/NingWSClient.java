@@ -5,9 +5,9 @@ import play.libs.ws.WSClient;
 
 public class NingWSClient implements WSClient<AsyncHttpClient> {
 
-    private play.api.libs.ws.WSClient<AsyncHttpClient> client;
+    private play.api.libs.ws.WSClient client;
 
-    public NingWSClient(play.api.libs.ws.WSClient<AsyncHttpClient> client) {
+    public NingWSClient(play.api.libs.ws.WSClient client) {
         this.client = client;
     }
 
