@@ -97,34 +97,37 @@ trait WSRequest {
   /**
    * Set an HTTP header.
    */
+  @scala.deprecated("Use WSRequestHolder", "2.3.0")
   def setHeader(name: String, value: String): WSRequest
 
   /**
    * Add an HTTP header (used for headers with multiple values).
    */
+  @scala.deprecated("Use WSRequestHolder", "2.3.0")
   def addHeader(name: String, value: String): WSRequest
 
-  /**
-   * Defines the request headers.
-   * XXX Do not use ning map
-   */
-  // override def setHeaders(hdrs: FluentCaseInsensitiveStringsMap)
+  //@scala.deprecated
+  //override def setHeaders(hdrs: FluentCaseInsensitiveStringsMap)
 
   /**
    * Defines the request headers.
    */
+  @scala.deprecated("Use WSRequestHolder", "2.3.0")
   def setHeaders(hdrs: java.util.Map[String, java.util.Collection[String]]): WSRequest
 
   /**
    * Defines the request headers.
    */
+  @scala.deprecated("Use WSRequestHolder", "2.3.0")
   def setHeaders(hdrs: Map[String, Seq[String]]): WSRequest
 
   /**
    * Defines the query string.
    */
+  @scala.deprecated("Use WSRequestHolder", "2.3.0")
   def setQueryString(queryString: Map[String, Seq[String]]): WSRequest
 
+  @scala.deprecated("Use WSRequestHolder", "2.3.0")
   def setUrl(url: String): WSRequest
 }
 
