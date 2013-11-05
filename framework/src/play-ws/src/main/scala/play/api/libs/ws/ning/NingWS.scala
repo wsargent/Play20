@@ -276,7 +276,8 @@ case class NingWSRequestHolder(client: NingWSClient,
     followRedirects: Option[Boolean],
     requestTimeout: Option[Int],
     virtualHost: Option[String],
-    proxyServer: Option[WSProxyServer]) extends WSRequestHolder {
+    proxyServer: Option[WSProxyServer],
+    body: Option[WSRequestBody]) extends WSRequestHolder {
 
   /**
    * sets the signature calculator for the request
@@ -335,96 +336,30 @@ case class NingWSRequestHolder(client: NingWSClient,
     this.copy(proxyServer = Some(proxyServer))
   }
 
-  /**
-   * performs a get with supplied body
-   */
+  def withBody(file: File) =
+    this.copy(body = Some(new WSRequestBodyFile(file)))
 
-  def get(): Future[NingWSResponse] = prepare("GET").execute
-
-  /**
-   * performs a get with supplied body
-   * @param consumer that's handling the response
-   */
-  def get[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] =
-    prepare("GET").executeStream(consumer)
-
-  /**
-   * Perform a PATCH on the request asynchronously.
-   */
-  def patch[T](body: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[NingWSResponse] = prepare("PATCH", body).execute
-
-  /**
-   * Perform a PATCH on the request asynchronously.
-   * Request body won't be chunked
-   */
-  def patch(body: File): Future[NingWSResponse] = prepare("PATCH", body).execute
-
-  /**
-   * performs a POST with supplied body
-   * @param consumer that's handling the response
-   */
-  def patchAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = prepare("PATCH", body).executeStream(consumer)
-
-  /**
-   * Perform a POST on the request asynchronously.
-   */
-  def post[T](body: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[NingWSResponse] = prepare("POST", body).execute
-
-  /**
-   * Perform a POST on the request asynchronously.
-   * Request body won't be chunked
-   */
-  def post(body: File): Future[NingWSResponse] = prepare("POST", body).execute
-
-  /**
-   * performs a POST with supplied body
-   * @param consumer that's handling the response
-   */
-  def postAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = prepare("POST", body).executeStream(consumer)
-
-  /**
-   * Perform a PUT on the request asynchronously.
-   */
-  def put[T](body: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[NingWSResponse] = prepare("PUT", body).execute
-
-  /**
-   * Perform a PUT on the request asynchronously.
-   * Request body won't be chunked
-   */
-  def put(body: File): Future[NingWSResponse] = prepare("PUT", body).execute
-
-  /**
-   * performs a PUT with supplied body
-   * @param consumer that's handling the response
-   */
-  def putAndRetrieveStream[A, T](body: T)(consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit wrt: Writeable[T], ct: ContentTypeOf[T], ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = prepare("PUT", body).executeStream(consumer)
-
-  /**
-   * Perform a DELETE on the request asynchronously.
-   */
-  def delete(): Future[NingWSResponse] = prepare("DELETE").execute
-
-  /**
-   * Perform a HEAD on the request asynchronously.
-   */
-  def head(): Future[NingWSResponse] = prepare("HEAD").execute
-
-  /**
-   * Perform a OPTIONS on the request asynchronously.
-   */
-  def options(): Future[NingWSResponse] = prepare("OPTIONS").execute
+  def withBody[T](content: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]) =
+    this.copy(body = Some(new WSRequestBodyWritable(content, wrt, ct)))
 
   /**
    * Execute an arbitrary method on the request asynchronously.
    *
    * @param method The method to execute
    */
-  def execute(method: String): Future[WSResponse] = prepare(method).execute
+  //TODO use the correct prepare method
+  def execute(method: String) = prepare(method).execute
+
+  def stream[A](method: String, consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext) =
+    prepare(method).executeStream(consumer)
 
   private[play] def prepare(method: String): NingWSRequest = {
     val request: NingWSRequest = new NingWSRequest(client, method, auth, calc).setUrl(url)
       .setHeaders(headers)
       .setQueryString(queryString)
+
+    prepareBody(request)
+
     followRedirects.map(request.setFollowRedirects)
     requestTimeout.map {
       t: Int =>
@@ -441,6 +376,20 @@ case class NingWSRequestHolder(client: NingWSClient,
     prepareProxy(request)
 
     request
+  }
+
+  private def prepareBody(request: NingWSRequest) {
+    body match {
+      case Some(f: WSRequestBodyFile) =>
+        import com.ning.http.client.generators.FileBodyGenerator
+
+        val bodyGenerator = new FileBodyGenerator(f.getFile)
+        request.setBody(bodyGenerator)
+      case Some(b: WSRequestBodyWritable[AnyRef]) =>
+        request.addHeader("Content-Type", b.getContentType.mimeType.getOrElse("text/plain"))
+        request.setBody(b.transform)
+      case None => ()
+    }
   }
 
   private[play] def prepareProxy(request: NingWSRequest) {
@@ -483,53 +432,6 @@ case class NingWSRequestHolder(client: NingWSClient,
 
         request.setProxyServer(proxyServer)
     }
-  }
-
-  private[play] def prepare(method: String, body: File): NingWSRequest = {
-    import com.ning.http.client.generators.FileBodyGenerator
-
-    val bodyGenerator = new FileBodyGenerator(body)
-
-    val request = new NingWSRequest(client, method, auth, calc).setUrl(url)
-      .setHeaders(headers)
-      .setQueryString(queryString)
-      .setBody(bodyGenerator)
-    followRedirects.map(request.setFollowRedirects)
-    requestTimeout.map {
-      t: Int =>
-        val config = new PerRequestConfig()
-        config.setRequestTimeoutInMs(t)
-        request.setPerRequestConfig(config)
-    }
-    virtualHost.map {
-      v =>
-        request.setVirtualHost(v)
-    }
-
-    prepareProxy(request)
-
-    request
-  }
-
-  private[play] def prepare[T](method: String, body: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): NingWSRequest = {
-    val request = new NingWSRequest(client, method, auth, calc).setUrl(url)
-      .setHeaders(Map("Content-Type" -> Seq(ct.mimeType.getOrElse("text/plain"))) ++ headers)
-      .setQueryString(queryString)
-      .setBody(wrt.transform(body))
-    followRedirects.map(request.setFollowRedirects)
-    requestTimeout.map {
-      t: Int =>
-        val config = new PerRequestConfig()
-        config.setRequestTimeoutInMs(t)
-        request.setPerRequestConfig(config)
-    }
-    virtualHost.map {
-      v =>
-        request.setVirtualHost(v)
-    }
-    prepareProxy(request)
-
-    request
   }
 }
 
@@ -601,7 +503,7 @@ class NingWSAPI(app: Application) extends WSAPI {
     })
   }
 
-  def url(url: String) = NingWSRequestHolder(client, url, Map(), Map(), None, None, None, None, None, None)
+  def url(url: String) = NingWSRequestHolder(client, url, Map(), Map(), None, None, None, None, None, None, None)
 
   /**
    * resets the underlying AsyncHttpClient
