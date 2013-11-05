@@ -3,32 +3,31 @@
  */
 package play.api.libs.ws.ning
 
-import com.ning.http.client.{Response => AHCResponse, Cookie => AHCCookie, ProxyServer => AHCProxyServer, _}
-import com.ning.http.client.Realm.{RealmBuilder, AuthScheme}
+import com.ning.http.client.{ Response => AHCResponse, Cookie => AHCCookie, ProxyServer => AHCProxyServer, _ }
+import com.ning.http.client.Realm.{ RealmBuilder, AuthScheme }
 import com.ning.http.util.AsyncHttpProviderUtils
 
 import collection.immutable.TreeMap
 
-import scala.concurrent.{Future, Promise, ExecutionContext}
+import scala.concurrent.{ Future, Promise, ExecutionContext }
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
 import play.api.libs.ws._
-import play.api.http.{Writeable, ContentTypeOf}
+import play.api.http.{ Writeable, ContentTypeOf }
 import play.api.libs.iteratee._
 import play.api.libs.iteratee.Input.El
-import play.api.{Application, Play}
+import play.api.{ Application, Play }
 
 import play.core.utils.CaseInsensitiveOrdered
-
 
 class NingWSClient(config: AsyncHttpClientConfig) extends WSClient {
   private val asyncHttpClient = new AsyncHttpClient(config)
 
   def underlying[T] = asyncHttpClient.asInstanceOf[T]
 
-  def executeRequest[T](request:Request, handler:AsyncHandler[T]) : ListenableFuture[T] = asyncHttpClient.executeRequest(request, handler)
+  def executeRequest[T](request: Request, handler: AsyncHandler[T]): ListenableFuture[T] = asyncHttpClient.executeRequest(request, handler)
 
   def close() = asyncHttpClient.close()
 }
@@ -37,8 +36,8 @@ class NingWSClient(config: AsyncHttpClientConfig) extends WSClient {
  * A WS Request.
  */
 class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String, String, WSAuthScheme)], _calc: Option[WSSignatureCalculator])
-  extends RequestBuilderBase[NingWSRequest](classOf[NingWSRequest], _method, false)
-  with WSRequest {
+    extends RequestBuilderBase[NingWSRequest](classOf[NingWSRequest], _method, false)
+    with WSRequest {
 
   import scala.collection.JavaConverters._
 
@@ -190,7 +189,6 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
     result.future
   }
 
-
   /**
    * Defines the URL.
    */
@@ -266,21 +264,19 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
 
 }
 
-
 /**
  * A WS Request builder.
  */
 case class NingWSRequestHolder(client: NingWSClient,
-                               url: String,
-                               headers: Map[String, Seq[String]],
-                               queryString: Map[String, Seq[String]],
-                               calc: Option[WSSignatureCalculator],
-                               auth: Option[(String, String, WSAuthScheme)],
-                               followRedirects: Option[Boolean],
-                               requestTimeout: Option[Int],
-                               virtualHost: Option[String],
-                               proxyServer: Option[WSProxyServer]) extends WSRequestHolder {
-
+    url: String,
+    headers: Map[String, Seq[String]],
+    queryString: Map[String, Seq[String]],
+    calc: Option[WSSignatureCalculator],
+    auth: Option[(String, String, WSAuthScheme)],
+    followRedirects: Option[Boolean],
+    requestTimeout: Option[Int],
+    virtualHost: Option[String],
+    proxyServer: Option[WSProxyServer]) extends WSRequestHolder {
 
   /**
    * sets the signature calculator for the request
@@ -424,7 +420,6 @@ case class NingWSRequestHolder(client: NingWSClient,
    * @param method The method to execute
    */
   def execute(method: String): Future[WSResponse] = prepare(method).execute
-
 
   private[play] def prepare(method: String): NingWSRequest = {
     val request: NingWSRequest = new NingWSRequest(client, method, auth, calc).setUrl(url)
@@ -608,7 +603,6 @@ class NingWSAPI(app: Application) extends WSAPI {
 
   def url(url: String) = NingWSRequestHolder(client, url, Map(), Map(), None, None, None, None, None, None)
 
-
   /**
    * resets the underlying AsyncHttpClient
    */
@@ -674,7 +668,6 @@ private class NingWSCookie(ahcCookie: AHCCookie) extends WSCookie {
 
   override def toString: String = ahcCookie.toString
 }
-
 
 /**
  * A WS HTTP response.
