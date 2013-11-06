@@ -110,10 +110,11 @@ class ScalaFunctionalTestSpec extends PlaySpecification with Results {
     }
     // #scalafunctionaltest-testwithbrowser
 
-    val testPaymentGatewayURL = "http://example.com/"
-    val myPublicAddress = "localhost:19001"
+    val testPort = 19001
+    val myPublicAddress = "localhost:" + testPort
+    val testPaymentGatewayURL = "http://" + myPublicAddress
     // #scalafunctionaltest-testpaymentgateway
-    "test server logic" in new WithServer {
+    "test server logic" in new WithServer(app = fakeApplicationWithBrowser, port = testPort) {
       // The test payment gateway requires a callback to this server before it returns a result...
       val callbackURL = "http://" + myPublicAddress + "/callback"
 

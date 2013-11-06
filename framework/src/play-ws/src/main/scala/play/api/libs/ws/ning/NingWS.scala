@@ -3,25 +3,29 @@
  */
 package play.api.libs.ws.ning
 
-import com.ning.http.client.{ Response => AHCResponse, Cookie => AHCCookie, ProxyServer => AHCProxyServer, _ }
-import com.ning.http.client.Realm.{ RealmBuilder, AuthScheme }
+import com.ning.http.client.{Response => AHCResponse, Cookie => AHCCookie, ProxyServer => AHCProxyServer, _}
+import com.ning.http.client.Realm.{RealmBuilder, AuthScheme}
 import com.ning.http.util.AsyncHttpProviderUtils
 
 import collection.immutable.TreeMap
 
-import scala.concurrent.{ Future, Promise, ExecutionContext }
+import scala.concurrent.{Future, Promise, ExecutionContext}
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
 import play.api.libs.ws._
-import play.api.http.{ Writeable, ContentTypeOf }
+import play.api.http.{Writeable, ContentTypeOf}
 import play.api.libs.iteratee._
 import play.api.libs.iteratee.Input.El
-import play.api.{ Application, Play }
+import play.api.{Application, Play}
 
 import play.core.utils.CaseInsensitiveOrdered
 
+/**
+ * A WS client backed by a Ning AsyncHttpClient.
+ * @param config the config for AsyncHttpClient
+ */
 class NingWSClient(config: AsyncHttpClientConfig) extends WSClient {
   private val asyncHttpClient = new AsyncHttpClient(config)
 
@@ -35,20 +39,15 @@ class NingWSClient(config: AsyncHttpClientConfig) extends WSClient {
 /**
  * A WS Request.
  */
-class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String, String, WSAuthScheme)])
-    extends RequestBuilderBase[NingWSRequest](classOf[NingWSRequest], _method, false)
-    with WSRequest {
+case class NingWSRequest(client: NingWSClient,
+                         private val _method: String,
+                         private val _auth: Option[(String, String, WSAuthScheme)],
+                         builder: RequestBuilder)
+  extends WSRequest {
 
   import scala.collection.JavaConverters._
 
-  def getStringData: String = body.getOrElse("")
-
   protected var body: Option[String] = None
-
-  override def setBody(s: String) = {
-    this.body = Some(s)
-    super.setBody(s)
-  }
 
   protected var headers: Map[String, Seq[String]] = Map()
 
@@ -57,40 +56,18 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
   //this will do a java mutable set hence the {} response
   _auth.map(data => auth(data._1, data._2, authScheme(data._3))).getOrElse({})
 
-  private def authScheme(scheme: WSAuthScheme): AuthScheme = scheme match {
-    case WSAuthScheme.DIGEST => AuthScheme.DIGEST
-    case WSAuthScheme.BASIC => AuthScheme.BASIC
-    case WSAuthScheme.NTLM => AuthScheme.NTLM
-    case WSAuthScheme.SPNEGO => AuthScheme.SPNEGO
-    case WSAuthScheme.KERBEROS => AuthScheme.KERBEROS
-    case WSAuthScheme.NONE => AuthScheme.NONE
-    case _ => throw new RuntimeException("Unknown scheme " + scheme)
-  }
-
-  /**
-   * Add http auth headers. Defaults to HTTP Basic.
-   */
-  private def auth(username: String, password: String, scheme: AuthScheme = AuthScheme.BASIC): WSRequest = {
-    this.setRealm((new RealmBuilder)
-      .setScheme(scheme)
-      .setPrincipal(username)
-      .setPassword(password)
-      .setUsePreemptiveAuth(true)
-      .build())
-  }
-
   /**
    * Return the current headers of the request being constructed
    */
   def allHeaders: Map[String, Seq[String]] = {
-    mapAsScalaMapConverter(request.asInstanceOf[com.ning.http.client.Request].getHeaders()).asScala.map(e => e._1 -> e._2.asScala.toSeq).toMap
+    mapAsScalaMapConverter(builder.build().getHeaders).asScala.map(e => e._1 -> e._2.asScala.toSeq).toMap
   }
 
   /**
    * Return the current query string parameters
    */
   def queryString: Map[String, Seq[String]] = {
-    mapAsScalaMapConverter(request.asInstanceOf[com.ning.http.client.Request].getParams()).asScala.map(e => e._1 -> e._2.asScala.toSeq).toMap
+    mapAsScalaMapConverter(builder.build().getParams).asScala.map(e => e._1 -> e._2.asScala.toSeq).toMap
   }
 
   /**
@@ -108,57 +85,147 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
    */
   def url: String = _url
 
+  def getStringData: String = body.getOrElse("")
+
   /**
    * Set an HTTP header.
    */
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
   override def setHeader(name: String, value: String): NingWSRequest = {
     headers = headers + (name -> List(value))
-    super.setHeader(name, value)
+    this.copy(builder = builder.setHeader(name, value))
   }
 
   /**
    * Add an HTTP header (used for headers with multiple values).
    */
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
   override def addHeader(name: String, value: String): NingWSRequest = {
     headers = headers + (name -> (headers.get(name).getOrElse(List()) :+ value))
-    super.addHeader(name, value)
+    this.copy(builder = builder.addHeader(name, value))
   }
 
   /**
    * Defines the request headers.
    */
-  override def setHeaders(hdrs: FluentCaseInsensitiveStringsMap): NingWSRequest = {
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setHeaders(hdrs: FluentCaseInsensitiveStringsMap): NingWSRequest = {
     headers = ningHeadersToMap(hdrs)
-    super.setHeaders(hdrs)
+    this.copy(builder = builder.setHeaders(hdrs))
   }
 
   /**
    * Defines the request headers.
    */
-  override def setHeaders(hdrs: java.util.Map[String, java.util.Collection[String]]): NingWSRequest = {
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setHeaders(hdrs: java.util.Map[String, java.util.Collection[String]]): NingWSRequest = {
     headers = ningHeadersToMap(hdrs)
-    super.setHeaders(hdrs)
+    this.copy(builder = builder.setHeaders(hdrs))
   }
 
   /**
    * Defines the request headers.
    */
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
   def setHeaders(hdrs: Map[String, Seq[String]]): NingWSRequest = {
     headers = hdrs
-    hdrs.foreach(header => header._2.foreach(value =>
-      super.addHeader(header._1, value)
-    ))
-    this
+    // roll up the builders using two foldlefts...
+    val newBuilder = hdrs.foldLeft(builder) {
+      (b, header) =>
+        header._2.foldLeft(b) {
+          (b2, value) =>
+            b2.addHeader(header._1, value)
+        }
+    }
+    this.copy(builder = newBuilder)
   }
 
   /**
    * Defines the query string.
    */
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
   def setQueryString(queryString: Map[String, Seq[String]]): NingWSRequest = {
-    for ((key, values) <- queryString; value <- values) {
-      this.addQueryParameter(key, value)
+    val newBuilder = queryString.foldLeft(builder) {
+      (b, entry) =>
+        val (key, values) = entry
+        values.foldLeft(b) {
+          (b2, value) =>
+            b2.addQueryParameter(key, value)
+        }
     }
-    this
+    this.copy(builder = newBuilder)
+  }
+
+  /**
+   * Defines the URL.
+   */
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setUrl(url: String): NingWSRequest = {
+    _url = url
+    this.copy(builder = builder.setUrl(url))
+  }
+
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setPerRequestConfig(config: PerRequestConfig): NingWSRequest = {
+    this.copy(builder = builder.setPerRequestConfig(config))
+  }
+
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setFollowRedirects(followRedirects: Boolean): NingWSRequest = {
+    this.copy(builder = builder.setFollowRedirects(followRedirects))
+  }
+
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setVirtualHost(virtualHost: String): NingWSRequest = {
+    this.copy(builder = builder.setVirtualHost(virtualHost))
+  }
+
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setProxyServer(proxyServer: AHCProxyServer): NingWSRequest = {
+    this.copy(builder = builder.setProxyServer(proxyServer))
+  }
+
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setBody(s: String): NingWSRequest = {
+    this.body = Some(s)
+    this.copy(builder = builder.setBody(s))
+  }
+
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setBody(bodyGenerator: BodyGenerator): NingWSRequest = {
+    this.copy(builder = builder.setBody(bodyGenerator))
+  }
+
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def setBody(byteArray: Array[Byte]): NingWSRequest = {
+    this.copy(builder = builder.setBody(byteArray))
+  }
+
+  @scala.deprecated("This will be a protected method, please use WSRequestHolder", "2.3.0")
+  def build: com.ning.http.client.Request = {
+    builder.build()
+  }
+
+  private def authScheme(scheme: WSAuthScheme): AuthScheme = scheme match {
+    case WSAuthScheme.DIGEST => AuthScheme.DIGEST
+    case WSAuthScheme.BASIC => AuthScheme.BASIC
+    case WSAuthScheme.NTLM => AuthScheme.NTLM
+    case WSAuthScheme.SPNEGO => AuthScheme.SPNEGO
+    case WSAuthScheme.KERBEROS => AuthScheme.KERBEROS
+    case WSAuthScheme.NONE => AuthScheme.NONE
+    case _ => throw new RuntimeException("Unknown scheme " + scheme)
+  }
+
+  /**
+   * Add http auth headers. Defaults to HTTP Basic.
+   */
+  private def auth(username: String, password: String, scheme: AuthScheme = AuthScheme.BASIC): WSRequest = {
+    this.copy(builder = builder.setRealm((new RealmBuilder)
+      .setScheme(scheme)
+      .setPrincipal(username)
+      .setPassword(password)
+      .setUsePreemptiveAuth(true)
+      .build()))
   }
 
   private def ningHeadersToMap(headers: java.util.Map[String, java.util.Collection[String]]) =
@@ -173,7 +240,12 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
   private[libs] def execute: Future[NingWSResponse] = {
     import com.ning.http.client.AsyncCompletionHandler
     var result = Promise[NingWSResponse]()
+<<<<<<< HEAD
     client.executeRequest(this.build(), new AsyncCompletionHandler[AHCResponse]() {
+=======
+    calculator.map(_.sign(this))
+    client.executeRequest(builder.build(), new AsyncCompletionHandler[AHCResponse]() {
+>>>>>>> wsargent/play-ws-api
       override def onCompleted(response: AHCResponse) = {
         result.success(NingWSResponse(response))
         response
@@ -186,14 +258,6 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
     result.future
   }
 
-  /**
-   * Defines the URL.
-   */
-  override def setUrl(url: String): NingWSRequest = {
-    _url = url
-    super.setUrl(url)
-  }
-
   private[libs] def executeStream[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = {
     import com.ning.http.client.AsyncHandler
     var doneOrError = false
@@ -202,7 +266,7 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
     val iterateeP = Promise[Iteratee[Array[Byte], A]]()
     var iteratee: Iteratee[Array[Byte], A] = null
 
-    client.executeRequest(this.build(), new AsyncHandler[Unit]() {
+    client.executeRequest(builder.build(), new AsyncHandler[Unit]() {
 
       import com.ning.http.client.AsyncHandler.STATE
 
@@ -264,15 +328,15 @@ class NingWSRequest(client: NingWSClient, _method: String, _auth: Option[(String
  * A WS Request builder.
  */
 case class NingWSRequestHolder(client: NingWSClient,
-    url: String,
-    headers: Map[String, Seq[String]],
-    queryString: Map[String, Seq[String]],
-    calc: Option[WSSignatureCalculator],
-    auth: Option[(String, String, WSAuthScheme)],
-    followRedirects: Option[Boolean],
-    requestTimeout: Option[Int],
-    virtualHost: Option[String],
-    proxyServer: Option[WSProxyServer]) extends WSRequestHolder {
+                               url: String,
+                               headers: Map[String, Seq[String]],
+                               queryString: Map[String, Seq[String]],
+                               calc: Option[WSSignatureCalculator],
+                               auth: Option[(String, String, WSAuthScheme)],
+                               followRedirects: Option[Boolean],
+                               requestTimeout: Option[Int],
+                               virtualHost: Option[String],
+                               proxyServer: Option[WSProxyServer]) extends WSRequestHolder {
 
   /**
    * sets the signature calculator for the request
@@ -430,7 +494,7 @@ case class NingWSRequestHolder(client: NingWSClient,
 
   private[play] def prepare(method: String): NingWSRequest = {
     val rh = signRequest(method, None)
-    val request: NingWSRequest = new NingWSRequest(client, method, rh.auth).setUrl(rh.url)
+    val request: NingWSRequest = new NingWSRequest(client, method, rh.auth, new RequestBuilder(method)).setUrl(rh.url)
       .setHeaders(rh.headers)
       .setQueryString(rh.queryString)
     followRedirects.map(request.setFollowRedirects)
@@ -499,7 +563,7 @@ case class NingWSRequestHolder(client: NingWSClient,
 
     val bodyGenerator = new FileBodyGenerator(body)
 
-    val request = new NingWSRequest(client, method, rh.auth).setUrl(url)
+    val request = new NingWSRequest(client, method, rh.auth, new RequestBuilder(method)).setUrl(rh.url)
       .setHeaders(rh.headers)
       .setQueryString(rh.queryString)
       .setBody(bodyGenerator)
@@ -522,7 +586,7 @@ case class NingWSRequestHolder(client: NingWSClient,
 
   private[play] def prepare[T](method: String, body: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): NingWSRequest = {
     val rh = signRequest(method, Some(new WSRequestBodyWriteable(body, wrt, ct)))
-    val request = new NingWSRequest(client, method, rh.auth).setUrl(rh.url)
+    val request = new NingWSRequest(client, method, rh.auth, new RequestBuilder(method)).setUrl(rh.url)
       .setHeaders(Map("Content-Type" -> Seq(ct.mimeType.getOrElse("text/plain"))) ++ rh.headers)
       .setQueryString(rh.queryString)
       .setBody(wrt.transform(body))
