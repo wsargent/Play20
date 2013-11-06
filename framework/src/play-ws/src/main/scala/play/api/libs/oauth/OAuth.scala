@@ -12,6 +12,8 @@ import oauth._
 
 import play.api.libs.ws._
 
+import scala.concurrent.stm.Ref
+
 /**
  * Library to access resources protected by OAuth 1.0a.
  *  @param info the service information, including the required URLs and the application id and secret
@@ -105,41 +107,55 @@ case class OAuthCalculator(consumerKey: ConsumerKey, token: RequestToken) extend
   this.setTokenWithSecret(token.token, token.secret)
 
   override protected def wrap(request: Any) = request match {
-    case r: WSRequest => new WSRequestAdapter(r)
-    case _ => throw new IllegalArgumentException("OAuthCalculator expects requests of type play.api.libs.WS.WSRequest")
+    case (r: WSRequestHolder, m: String, b: Option[WSRequestBody]) => new WSRequestAdapter(r, m, b)
+    case _ => throw new IllegalArgumentException("OAuthCalculator expects requests of type Tuple3(play.api.libs.WS.WSRequestHolder, String, Option[WSRequestBody])")
   }
 
-  override def sign(request: WSRequest): Unit = sign(wrap(request))
 
-  class WSRequestAdapter(request: WSRequest) extends HttpRequest {
+  override def sign[T <: WSRequestHolder](request: T, method: String, body: Option[WSRequestBody]): T = {
+    val wrappedRequest = wrap((request, method, body))
+    sign(wrappedRequest)
+    wrappedRequest.asInstanceOf[WSRequestAdapter[T]].unwrap
+  }
+
+  class WSRequestAdapter[T <: WSRequestHolder](req: T, method: String, body: Option[WSRequestBody]) extends HttpRequest {
+
+    val request = Ref[T](req)
 
     import scala.collection.JavaConverters._
 
-    override def unwrap() = request
+    override def unwrap(): T = request.single.get
 
     override def getAllHeaders(): java.util.Map[String, String] =
-      request.allHeaders.map { entry => (entry._1, entry._2.headOption) }
+      request.single.get.headers.map { entry => (entry._1, entry._2.headOption) }
         .filter { entry => entry._2.isDefined }
         .map { entry => (entry._1, entry._2.get) }.asJava
 
-    override def getHeader(name: String): String = request.header(name).getOrElse("")
+    override def getHeader(name: String): String = request.single.get.headers(name).headOption.getOrElse("")
 
     override def getContentType(): String = getHeader("Content-Type")
 
-    override def getMessagePayload() = new java.io.ByteArrayInputStream(request.getStringData.getBytes)
+    override def getMessagePayload() = body match {
+      case Some(f: WSRequestBodyFile) => new java.io.FileInputStream(f.getFile)
+      case Some(b: WSRequestBodyWriteable[AnyRef]) => new java.io.ByteArrayInputStream(b.transform)
+      case None => new java.io.ByteArrayInputStream(Array[Byte]())
+    }
 
-    override def getMethod(): String = this.request.method
+    override def getMethod(): String = method
 
     override def setHeader(name: String, value: String) {
-      request.setHeader(name, value)
+      request.single.transform(
+        _.withHeaders(name -> value).asInstanceOf[T]
+      )
     }
 
-    override def getRequestUrl() = request.url
+    override def getRequestUrl() = request.single.get.url
 
     override def setRequestUrl(url: String) {
-      request.setUrl(url)
+      request.single.transform(
+        _.setUrl(url).asInstanceOf[T]
+      )
     }
-
   }
 
 }

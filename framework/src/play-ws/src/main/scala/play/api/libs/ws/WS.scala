@@ -183,6 +183,19 @@ trait WSResponse {
 
 }
 
+
+sealed trait WSRequestBody
+class WSRequestBodyFile(file: File) extends WSRequestBody {
+  def getFile: File = file
+}
+class WSRequestBodyWriteable[T](content: T, writeable: Writeable[T], contentType: ContentTypeOf[T]) extends WSRequestBody {
+  def getContent: T = content
+  def getWriteable: Writeable[T] = writeable
+  def getContentType: ContentTypeOf[T] = contentType
+
+  lazy val transform: Array[Byte] = writeable.transform(content)
+}
+
 /**
  * A WS Request builder.
  */
@@ -205,6 +218,11 @@ trait WSRequestHolder {
   val virtualHost: Option[String]
 
   val proxyServer: Option[WSProxyServer]
+
+  /**
+   * set url of the request
+   */
+  def setUrl(url: String): WSRequestHolder
 
   /**
    * sets the signature calculator for the request
@@ -467,7 +485,7 @@ trait WSSignatureCalculator {
   /**
    * Sign it.
    */
-  def sign(request: WSRequest)
+  def sign[T <: WSRequestHolder](request: T, method: String, body: Option[WSRequestBody]): T
 
 }
 
