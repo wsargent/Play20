@@ -42,15 +42,12 @@ class NingWSClient(config: AsyncHttpClientConfig) extends WSClient {
 case class NingWSRequest(client: NingWSClient,
                          private val _method: String,
                          private val _auth: Option[(String, String, WSAuthScheme)],
-                         private val _calc: Option[WSSignatureCalculator],
                          builder: RequestBuilder)
   extends WSRequest {
 
   import scala.collection.JavaConverters._
 
   protected var body: Option[String] = None
-
-  protected var calculator: Option[WSSignatureCalculator] = _calc
 
   protected var headers: Map[String, Seq[String]] = Map()
 
@@ -243,8 +240,12 @@ case class NingWSRequest(client: NingWSClient,
   private[libs] def execute: Future[NingWSResponse] = {
     import com.ning.http.client.AsyncCompletionHandler
     var result = Promise[NingWSResponse]()
+<<<<<<< HEAD
+    client.executeRequest(this.build(), new AsyncCompletionHandler[AHCResponse]() {
+=======
     calculator.map(_.sign(this))
     client.executeRequest(builder.build(), new AsyncCompletionHandler[AHCResponse]() {
+>>>>>>> wsargent/play-ws-api
       override def onCompleted(response: AHCResponse) = {
         result.success(NingWSResponse(response))
         response
@@ -260,7 +261,6 @@ case class NingWSRequest(client: NingWSClient,
   private[libs] def executeStream[A](consumer: WSResponseHeaders => Iteratee[Array[Byte], A])(implicit ec: ExecutionContext): Future[Iteratee[Array[Byte], A]] = {
     import com.ning.http.client.AsyncHandler
     var doneOrError = false
-    calculator.map(_.sign(this))
 
     var statusCode = 0
     val iterateeP = Promise[Iteratee[Array[Byte], A]]()
@@ -343,6 +343,17 @@ case class NingWSRequestHolder(client: NingWSClient,
    * @param calc
    */
   def sign(calc: WSSignatureCalculator): WSRequestHolder = this.copy(calc = Some(calc))
+
+  /**
+   * Sign this request with the signer
+   */
+  private def signRequest(method: String, body: Option[WSRequestBody]): NingWSRequestHolder = calc.map(_.sign(this, method, body)).getOrElse(this)
+
+  /**
+   * sets the url
+   */
+  def setUrl(url: String): WSRequestHolder =
+    this.copy(url = url)
 
   /**
    * sets the authentication realm
@@ -479,12 +490,13 @@ case class NingWSRequestHolder(client: NingWSClient,
    *
    * @param method The method to execute
    */
-  def execute(method: String): Future[WSResponse] = prepare(method).execute
+  def execute(method: String): Future[NingWSResponse] = prepare(method).execute
 
   private[play] def prepare(method: String): NingWSRequest = {
-    val request: NingWSRequest = new NingWSRequest(client, method, auth, calc, new RequestBuilder(method)).setUrl(url)
-      .setHeaders(headers)
-      .setQueryString(queryString)
+    val rh = signRequest(method, None)
+    val request: NingWSRequest = new NingWSRequest(client, method, rh.auth, new RequestBuilder(method)).setUrl(rh.url)
+      .setHeaders(rh.headers)
+      .setQueryString(rh.queryString)
     followRedirects.map(request.setFollowRedirects)
     requestTimeout.map {
       t: Int =>
@@ -546,13 +558,14 @@ case class NingWSRequestHolder(client: NingWSClient,
   }
 
   private[play] def prepare(method: String, body: File): NingWSRequest = {
+    val rh = signRequest(method, Some(new WSRequestBodyFile(body)))
     import com.ning.http.client.generators.FileBodyGenerator
 
     val bodyGenerator = new FileBodyGenerator(body)
 
-    val request = new NingWSRequest(client, method, auth, calc, new RequestBuilder(method)).setUrl(url)
-      .setHeaders(headers)
-      .setQueryString(queryString)
+    val request = new NingWSRequest(client, method, rh.auth, new RequestBuilder(method)).setUrl(rh.url)
+      .setHeaders(rh.headers)
+      .setQueryString(rh.queryString)
       .setBody(bodyGenerator)
     followRedirects.map(request.setFollowRedirects)
     requestTimeout.map {
@@ -572,9 +585,10 @@ case class NingWSRequestHolder(client: NingWSClient,
   }
 
   private[play] def prepare[T](method: String, body: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): NingWSRequest = {
-    val request = new NingWSRequest(client, method, auth, calc, new RequestBuilder(method)).setUrl(url)
-      .setHeaders(Map("Content-Type" -> Seq(ct.mimeType.getOrElse("text/plain"))) ++ headers)
-      .setQueryString(queryString)
+    val rh = signRequest(method, Some(new WSRequestBodyWriteable(body, wrt, ct)))
+    val request = new NingWSRequest(client, method, rh.auth, new RequestBuilder(method)).setUrl(rh.url)
+      .setHeaders(Map("Content-Type" -> Seq(ct.mimeType.getOrElse("text/plain"))) ++ rh.headers)
+      .setQueryString(rh.queryString)
       .setBody(wrt.transform(body))
     followRedirects.map(request.setFollowRedirects)
     requestTimeout.map {
