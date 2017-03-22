@@ -125,7 +125,8 @@ private[server] class AkkaModelConversion(
       case HttpEntity.Chunked(contentType, _) =>
         Seq(CONTENT_TYPE -> contentType.value, TRANSFER_ENCODING -> play.api.http.HttpProtocol.CHUNKED)
     }
-    val normalHeaders: Seq[(String, String)] = request.headers
+    val normalHeaders = request.headers
+      .iterator // TODO replace with custom `Headers` impl
       .filter(_.isNot(`Raw-Request-URI`.lowercaseName))
       .map(rh => rh.name -> rh.value)
     new Headers(entityHeaders ++ normalHeaders)
