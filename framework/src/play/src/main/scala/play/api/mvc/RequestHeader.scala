@@ -160,8 +160,9 @@ trait RequestHeader {
    */
   def hasBody: Boolean = {
     import HeaderNames._
-    headers.get(CONTENT_LENGTH).isDefined || headers.get(TRANSFER_ENCODING).isDefined
+    headers.get(CONTENT_LENGTH).exists(_gtZero) || headers.get(TRANSFER_ENCODING).isDefined
   }
+  private val _gtZero: String => Boolean = _.toLong > 0
 
   /**
    * The HTTP host (domain, optionally port). This value is derived from the request target, if a hostname is present.
