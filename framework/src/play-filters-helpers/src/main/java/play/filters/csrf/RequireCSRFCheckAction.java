@@ -3,6 +3,7 @@
  */
 package play.filters.csrf;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
@@ -19,6 +20,8 @@ import play.mvc.Result;
 import scala.Option;
 
 public class RequireCSRFCheckAction extends Action<RequireCSRFCheck> {
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(RequireCSRFCheckAction.class);
 
     private final CSRFConfig config;
     private final SessionConfiguration sessionConfiguration;
@@ -47,6 +50,7 @@ public class RequireCSRFCheckAction extends Action<RequireCSRFCheck> {
         } else {
             // Get token from cookie/session
             Option<String> headerToken = csrfActionHelper.getTokenToValidate(request);
+            logger.trace("call: headerToken = {}", headerToken);
             if (headerToken.isDefined()) {
                 String tokenToCheck = null;
 
@@ -57,24 +61,40 @@ public class RequireCSRFCheckAction extends Action<RequireCSRFCheck> {
                 } else {
 
                     // Get token from body
-                    if (ctx.request().body().asFormUrlEncoded() != null) {
-                        String[] values = ctx.request().body().asFormUrlEncoded().get(config.tokenName());
-                        if (values != null && values.length > 0) {
-                            tokenToCheck = values[0];
+                    final Map<String, String[]> formUrlEncodedMap = ctx.request().body().asFormUrlEncoded();
+                    formUrlEncodedMap.forEach((k, v) -> {
+                        logger.trace("formUrlEncodedMap: k = {}, v = {}", k, v);
+                    });
+                    if (formUrlEncodedMap != null) {
+                        String[] values = formUrlEncodedMap.get(config.tokenName());
+                        if (values != null) {
+                            if (values.length == 1) {
+                                tokenToCheck = values[0];
+                            } else {
+                                logger.error("Illegal number of tokens: {}", Arrays.asList(values));
+                            }
                         }
+                        logger.trace("call: tokenToCheck from asFormUrlEncoded body = " + tokenToCheck);
                     } else if (ctx.request().body().asMultipartFormData() != null) {
                         Map<String, String[]> form = ctx.request().body().asMultipartFormData().asFormUrlEncoded();
                         String[] values = form.get(config.tokenName());
-                        if (values != null && values.length > 0) {
-                            tokenToCheck = values[0];
+                        if (values != null) {
+                            if (values.length == 1) {
+                                tokenToCheck = values[0];
+                            } else {
+                                logger.error("Illegal number of tokens: {}", Arrays.asList(values));
+                            }
                         }
                     }
                 }
 
+                logger.trace("call: tokenToCheck = " + tokenToCheck);
                 if (tokenToCheck != null) {
-                    if (tokenProvider.compareTokens(tokenToCheck, headerToken.get())) {
+                    final String headerTokenValue = headerToken.get();
+                    if (tokenProvider.compareTokens(tokenToCheck, headerTokenValue)) {
                         return delegate.call(ctx);
                     } else {
+                        logger.trace("call: tokenToCheck = {}, headerTokenValue = {}", tokenToCheck, headerTokenValue);
                         return handleTokenError(ctx, request, "CSRF tokens don't match");
                     }
                 } else {

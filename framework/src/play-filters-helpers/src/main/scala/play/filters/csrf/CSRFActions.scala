@@ -42,6 +42,8 @@ class CSRFAction(
     sessionConfiguration: SessionConfiguration,
     errorHandler: => ErrorHandler = CSRF.DefaultErrorHandler)(implicit mat: Materializer) extends EssentialAction {
 
+  private val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+
   import play.core.Execution.Implicits.trampoline
 
   lazy val csrfActionHelper = new CSRFActionHelper(sessionConfiguration, config, tokenSigner)
@@ -81,8 +83,10 @@ class CSRFAction(
             // Check the body
             request.contentType match {
               case Some("application/x-www-form-urlencoded") =>
+                filterLogger.trace(s"[CSRF] Check form body with url encoding")
                 checkFormBody(request, next, headerToken, config.tokenName)
               case Some("multipart/form-data") =>
+                filterLogger.trace(s"[CSRF] Check form body with multipart")
                 checkMultipartBody(request, next, headerToken, config.tokenName)
               // No way to extract token from other content types
               case Some(content) =>
@@ -131,6 +135,9 @@ class CSRFAction(
   }
 
   private def checkBody[T](extractor: (ByteString, String) => Option[String])(request: RequestHeader, action: EssentialAction, tokenFromHeader: String, tokenName: String) = {
+    import akka.event.Logging
+    implicit val logging = Logging(mat.asInstanceOf[ActorMaterializer].system.eventStream, logger.getName)
+
     // We need to ensure that the action isn't actually executed until the body is validated.
     // To do that, we use Flow.splitWhen(_ => false).  This basically says, give me a Source
     // containing all the elements when you receive the first element.  Our BodyHandler doesn't
@@ -147,16 +154,19 @@ class CSRFAction(
           filterLogger.trace("[CSRF] Check failed because no or invalid token found in body")
           false
         }
-      }))
+      })).log("checkBody", { el => el.utf8String })
         .splitWhen(_ => false)
         .prefixAndTail(0)
         .map(_._2)
         .concatSubstreams
         .toMat(Sink.head[Source[ByteString, _]])(Keep.right)
     ).mapFuture { validatedBodySource =>
+        filterLogger.trace(s"[CSRF] running with validated body source")
         action(request).run(validatedBodySource)
       }.recoverWith {
-        case NoTokenInBody => csrfActionHelper.clearTokenIfInvalid(request, errorHandler, "No CSRF token found in body")
+        case NoTokenInBody =>
+          filterLogger.trace("[CSRF] Check failed with NoTokenInBody")
+          csrfActionHelper.clearTokenIfInvalid(request, errorHandler, "No CSRF token found in body")
       }
   }
 
@@ -312,7 +322,7 @@ private class BodyHandler(config: CSRFConfig, checkBody: ByteString => Boolean) 
         }
 
         override def onPull(): Unit = {
-          println(s" --- PULL, CONTINUE; next = ${next.utf8String}")
+          println(s" --- PULL, CONTINUE; next = ${next.utf8String} -- " + buffer)
           if (next != null) {
             val toPush = next
             next = null
@@ -347,6 +357,7 @@ private class BodyHandler(config: CSRFConfig, checkBody: ByteString => Boolean) 
         System.err.println(s" >>> PUSH = ${elem.utf8String}")
 
         if (exceededBufferLimit(elem)) {
+          System.err.println(s"exceeded buffer limit")
           // We've finished buffering up to the configured limit, try to validate
           buffer ++= elem
           if (checkBody(buffer)) {
@@ -366,6 +377,7 @@ private class BodyHandler(config: CSRFConfig, checkBody: ByteString => Boolean) 
             failStage(NoTokenInBody)
           }
         } else {
+          System.err.println(s"onPush: buffer = $buffer ++ ${elem.utf8String}")
           // Buffer
           buffer ++= elem
           pull(in)
@@ -529,6 +541,7 @@ class CSRFActionHelper(
  * Apply this to all actions that require a CSRF check.
  */
 case class CSRFCheck @Inject() (config: CSRFConfig, tokenSigner: CSRFTokenSigner, sessionConfiguration: SessionConfiguration) {
+  private val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
   private class CSRFCheckAction[A](
       tokenProvider: TokenProvider,
@@ -539,6 +552,8 @@ case class CSRFCheck @Inject() (config: CSRFConfig, tokenSigner: CSRFTokenSigner
     def parser = wrapped.parser
     def executionContext = wrapped.executionContext
     def apply(untaggedRequest: Request[A]) = {
+      logger.info(s"CSRFCheck.apply = untaggedRequest = $untaggedRequest")
+
       val request = csrfActionHelper.tagRequestFromHeader(untaggedRequest)
 
       // Maybe bypass
