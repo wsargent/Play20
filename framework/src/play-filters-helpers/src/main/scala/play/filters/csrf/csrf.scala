@@ -250,7 +250,10 @@ object CSRF {
 
   class CSRFHttpErrorHandler @Inject() (httpErrorHandler: HttpErrorHandler) extends ErrorHandler {
     import play.api.http.Status.FORBIDDEN
-    def handle(req: RequestHeader, msg: String) = httpErrorHandler.onClientError(req, FORBIDDEN, msg)
+    def handle(req: RequestHeader, msg: String) = {
+      play.api.Logger.error("CSRFHttpErrorHandler.handle: error in message: " + msg)
+      httpErrorHandler.onClientError(req, FORBIDDEN, msg)
+    }
   }
 
   object DefaultErrorHandler extends ErrorHandler {

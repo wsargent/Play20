@@ -311,6 +311,8 @@ public interface BodyParser<A> {
      * Parse the body as form url encoded if the Content-Type is application/x-www-form-urlencoded.
      */
     class FormUrlEncoded extends BufferingBodyParser<Map<String, String[]>> {
+        private final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(this.getClass())
+
         private final HttpErrorHandler errorHandler;
 
         public FormUrlEncoded(long maxLength, HttpErrorHandler errorHandler) {
@@ -334,6 +336,7 @@ public interface BodyParser<A> {
         protected Map<String, String[]> parse(Http.RequestHeader request, ByteString bytes) throws Exception {
             String charset = request.charset().orElse("UTF-8");
             String urlEncodedString = bytes.decodeString("UTF-8");
+            logger.debug("parse = {}", urlEncodedString);
             return FormUrlEncodedParser.parseAsJavaArrayValues(urlEncodedString, charset);
         }
     }
